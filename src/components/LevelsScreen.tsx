@@ -3,6 +3,7 @@ import { Badge } from "./ui/badge";
 import { Star, Lock } from "lucide-react";
 import { ScreenBorder } from "./ScreenBorder";
 import { Header } from "./Header";
+import { useIsMobile } from "./ui/use-mobile";
 
 interface LevelsScreenProps {
   onNavigate: (screen: string) => void;
@@ -10,6 +11,7 @@ interface LevelsScreenProps {
 }
 
 export function LevelsScreen({ onNavigate, onStartLevel }: LevelsScreenProps) {
+  const isMobile = useIsMobile();
   const levels = [
     { id: 1, name: "TIDE POOLS", stars: 3, unlocked: true, difficulty: "EASY" },
     { id: 2, name: "CORAL COVE", stars: 2, unlocked: true, difficulty: "EASY" },
@@ -39,27 +41,9 @@ export function LevelsScreen({ onNavigate, onStartLevel }: LevelsScreenProps) {
         {/* Header */}
         <Header 
           title="SELECT LEVEL" 
-          subtitle="Choose your beach adventure!"
           onBack={() => onNavigate('welcome')}
         />
 
-        {/* Progress Stats */}
-        <div className="bg-beach-foam p-6 md:p-6 mb-6 md:mb-8 pixel-border rounded-lg">
-          <div className="flex justify-around md:justify-between items-center">
-            <div className="text-center">
-              <div className="pixel-font text-base md:text-lg text-beach-dark-rock">9</div>
-              <div className="pixel-font text-xs text-beach-dark-rock">LEVELS UNLOCKED</div>
-            </div>
-            <div className="text-center">
-              <div className="pixel-font text-base md:text-lg text-beach-dark-rock">9★</div>
-              <div className="pixel-font text-xs text-beach-dark-rock">STARS COLLECTED</div>
-            </div>
-            <div className="text-center">
-              <div className="pixel-font text-base md:text-lg text-beach-dark-rock">5</div>
-              <div className="pixel-font text-xs text-beach-dark-rock">LEVELS COMPLETED</div>
-            </div>
-          </div>
-        </div>
 
         {/* Levels Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
@@ -134,15 +118,19 @@ export function LevelsScreen({ onNavigate, onStartLevel }: LevelsScreenProps) {
         </div>
 
         {/* Floating sea elements */}
-        <div className="fixed top-20 left-10 animate-bounce" style={{ animationDelay: '0s' }}>
-          <div className="w-4 h-4 bg-beach-foam rounded-full pixel-border opacity-80"></div>
-        </div>
-        <div className="fixed top-40 right-16 animate-bounce" style={{ animationDelay: '1s' }}>
-          <div className="w-6 h-6 bg-beach-foam rounded-full pixel-border opacity-80"></div>
-        </div>
-        <div className="fixed bottom-32 left-20 animate-bounce" style={{ animationDelay: '2s' }}>
-          <div className="w-5 h-5 bg-beach-foam rounded-full pixel-border opacity-80"></div>
-        </div>
+        {!isMobile && (
+          <>
+            <div className="fixed top-20 left-10 animate-bounce" style={{ animationDelay: '0s' }}>
+              <div className="w-4 h-4 bg-beach-foam rounded-full pixel-border opacity-80"></div>
+            </div>
+            <div className="fixed top-40 right-16 animate-bounce" style={{ animationDelay: '1s' }}>
+              <div className="w-6 h-6 bg-beach-foam rounded-full pixel-border opacity-80"></div>
+            </div>
+            <div className="fixed bottom-32 left-20 animate-bounce" style={{ animationDelay: '2s' }}>
+              <div className="w-5 h-5 bg-beach-foam rounded-full pixel-border opacity-80"></div>
+            </div>
+          </>
+        )}
         </div>
       </div>
     </ScreenBorder>

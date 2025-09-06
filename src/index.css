@@ -4917,18 +4917,19 @@
   --font-size: 16px;
   --background: #ffffff;
   --foreground: #2c1810;
-  --beach-sand: #e8d5b7;
-  --beach-water: #4fb3d9;
-  --beach-deep-water: #2081a8;
-  --beach-sunset: #ff6b9d;
-  --beach-coral: #c44569;
-  --beach-seaweed: #26a0a7;
-  /* --beach-rock: #5d737e; */
-  --beach-rock: #206485;
-  --beach-dark-rock: #3d4a52;
-  /*--beach-foam: #f7f3e9;*/
-  --beach-foam:#FFFFFF;
-  --beach-purple: #8e44ad;
+  /* updated beach palette */
+  --beach-dark-rock: #3b4495; /* anchor */
+  --beach-purple: #a154e1; /* warm/cool anchor */
+  --beach-water: #4cb8c8;  /* cool */
+  --beach-seaweed: #2ca726; /* cool */
+  --beach-deep-water: #2f8585; /* cool */
+  --beach-sand: #ffd53e;  /* warm */
+  --beach-sunset: #f551d3; /* warm */
+  --beach-coral: #fba596; /* warm */
+  --beach-foam: #FFFFFF;
+  --beach-foam-yellow: #ecee5e;  /* light foam/accent */
+  --beach-rock: #3b4495;   /* warm */
+ 
   --card: #fff;
   --card-foreground: oklch(.145 0 0);
   --popover: oklch(1 0 0);
@@ -4938,7 +4939,7 @@
   --secondary: oklch(.95 .0058 264.53);
   --secondary-foreground: #030213;
   --muted: #ececf0;
-  --muted-foreground: #717182;
+  --muted-foreground: #c8c3ad;
   --accent: #e9ebef;
   --accent-foreground: #030213;
   --destructive: #d4183d;
@@ -4950,11 +4951,11 @@
   --font-weight-medium: 500;
   --font-weight-normal: 400;
   --ring: oklch(.708 0 0);
-  --chart-1: oklch(.646 .222 41.116);
-  --chart-2: oklch(.6 .118 184.704);
-  --chart-3: oklch(.398 .07 227.392);
-  --chart-4: oklch(.828 .189 84.429);
-  --chart-5: oklch(.769 .188 70.08);
+  --chart-1: #3b4495;
+  --chart-2: #2f8585;
+  --chart-3: #2ca726;
+  --chart-4: #4cb8c8;
+  --chart-5: #fba596;
   --radius: .625rem;
   --sidebar: oklch(.985 0 0);
   --sidebar-foreground: oklch(.145 0 0);
