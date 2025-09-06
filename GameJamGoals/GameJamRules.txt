@@ -1,0 +1,84 @@
+Improving Game Jam Rules & Guidelines
+Event Overview
+Welcome to Improving’s first annual Global Game jam! This is a creative competition where teams have a limited time to design and develop a playable game based on a theme revealed at the start of the event.
+Basic Rules
+Duration & Timeline
+•	Total Duration: 60 hours (Friday 8 AM PST - Sunday 8 PM PST)
+•	Event Dates: September 5-7
+•	Kick-off and Theme Announcement: Friday 8 AM PST
+•	Submission Deadline: Sunday 8 PM PST (no extensions)
+•	In-Office Events: TBD within each enterprise
+Team Formation
+•	Team Size: 2-5 people maximum
+•	Cross-Enterprise Encouraged: Teams can include members from any department and enterprise
+•	Solo Participation: Allowed but not recommended for beginners
+•	Registration: Must register by 5pm PST Wednesday, September 3rd
+Eligibility
+•	All company employees and interns are eligible
+•	Remote employees can participate virtually
+Game Requirements
+Technical Specifications
+•	Games must be playable on standard company hardware (Windows and Mac)
+o	Either playable in browser, or provide installation for both Mac and Windows
+•	No proprietary or expensive software required to run the final game
+•	Include clear instructions on how to play
+Theme Compliance
+•	Games must incorporate the announced theme
+•	Theme interpretation is open to creative liberty
+•	Judges will evaluate theme integration as part of scoring
+Originality & Assets
+•	Code: Must be written during the jam period
+•	Art & Audio: Can use royalty-free assets, but original creation is encouraged
+•	Tools & Engines: Any game engine or development tools are permitted
+•	Third-Party Libraries: Standard libraries and frameworks are allowed
+•	AI Usage: The use of AI tools (e.g. Gemini, Cursor, etc.) is permitted.
+Submission Requirements
+Deliverables
+1.	Playable Game Build (executable file or web link)
+2.	Game Description (max. 200 words explaining concept and theme integration)
+3.	Play Instructions (how to install/run and basic controls) - if required
+Submission Method
+•	Upload your game to itch.io, link will be provided at the event kick-off
+•	Provide any required password in the Teams channel
+Code of Conduct
+Collaboration Guidelines
+•	Respect all team members and participants
+•	Share knowledge and help others when possible
+•	Maintain a positive, inclusive environment
+•	No harassment, discrimination, or inappropriate behavior
+Fair Play
+•	No sabotaging other teams
+•	Honor system for development timeline compliance
+Resources & Support
+•	Participation in Game Jam is entirely voluntary and on your own time.
+Provided Resources
+•	Access to company development hardware
+Technical Support
+•	Game Jam Teams channel for all participants
+Disqualification Conditions
+Teams may be disqualified for:
+•	Submitting late
+•	Using significant pre-existing code written before the jam
+•	Inappropriate content or behavior
+•	Violating company policies
+•	False representation of team contributions
+Health & Safety
+•	Don't compromise your health for the competition
+•	Take regular breaks
+•	Stay hydrated and eat regularly
+•	No burnout – participants are still expected to work normal hours the preceding and following weeks.
+Contact Information
+•	Event Coordinator: Ross Dutkiewicz – ross.dutkiewicz@improving.com
+•	In-office Events: Your local enterprise Come Together champion
+These rules are final and may only be modified by the event organizers. Any changes will be communicated immediately to all participants. By participating, you agree to abide by these rules and accept the judges' decisions as final.
+Good luck, and let the games begin! 🎮
+FAQ
+Q: When does registration close?
+A: September 3rd, 5pm PST
+
+Q: If I register was an individual, when will I be assigned my team?
+A: Individuals will be notified of their assigned team by email no later than September 2nd by noon PST.  You may still register after this time, and you will be assigned a team ASAP.
+
+Q: How do I submit my game?
+A: Games will be submitted via itch.io.  https://itch.io/jam/improving-global-game-jam
+N.B. One person on your team will need to register an itch.io account to submit your game.
