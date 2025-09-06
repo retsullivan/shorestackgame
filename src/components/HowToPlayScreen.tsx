@@ -41,7 +41,7 @@ export function HowToPlayScreen({ onNavigate }: HowToPlayScreenProps) {
         {/* Header */}
         <Header 
           title="HOW TO PLAY" 
-          onBack={() => onNavigate('welcome')} 
+          onBack={() => onNavigate('welcome')}
         />
 
         {/* Game Story */}

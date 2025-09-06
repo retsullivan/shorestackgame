@@ -10,7 +10,7 @@ export function ScreenBorder({ children }: ScreenBorderProps) {
       {/* Decorative elements for larger screens */}
       <div className="hidden lg:block">
         {/* Top border */}
-        <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-r from-beach-water via-beach-sunset to-beach-water"></div>
+       {/* <div className="absolute top-0 left-0 right-0 h-8 from-beach-water via-beach-sunset to-beach-water"></div> */}
         
         {/* Left border with sea creatures */}
         <div className="absolute top-8 left-0 bottom-8 w-16 bg-beach-deep-water">

@@ -7,9 +7,15 @@ import { GameScreen } from './components/GameScreen';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<string>('welcome');
+  const [selectedLevel, setSelectedLevel] = useState<number>(1);
 
   const handleNavigate = (screen: string) => {
     setCurrentScreen(screen);
+  };
+
+  const handleStartLevel = (levelId: number) => {
+    setSelectedLevel(levelId);
+    setCurrentScreen('game');
   };
 
   const renderScreen = () => {
@@ -21,9 +27,9 @@ export default function App() {
       case 'howtoplay':
         return <HowToPlayScreen onNavigate={handleNavigate} />;
       case 'levels':
-        return <LevelsScreen onNavigate={handleNavigate} />;
+        return <LevelsScreen onNavigate={handleNavigate} onStartLevel={handleStartLevel} />;
       case 'game':
-        return <GameScreen onNavigate={handleNavigate} />;
+        return <GameScreen onNavigate={handleNavigate} levelNumber={selectedLevel} />;
       default:
         return <WelcomeScreen onNavigate={handleNavigate} />;
     }

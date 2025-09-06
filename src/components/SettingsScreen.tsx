@@ -26,7 +26,7 @@ export function SettingsScreen({ onNavigate }: SettingsScreenProps) {
         {/* Header */}
         <Header 
           title="SETTINGS" 
-          onBack={() => onNavigate('welcome')} 
+          onBack={() => onNavigate('welcome')}
         />
 
         {/* Settings Panel */}

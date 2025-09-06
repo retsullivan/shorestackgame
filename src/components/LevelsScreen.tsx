@@ -6,9 +6,10 @@ import { Header } from "./Header";
 
 interface LevelsScreenProps {
   onNavigate: (screen: string) => void;
+  onStartLevel?: (levelId: number) => void;
 }
 
-export function LevelsScreen({ onNavigate }: LevelsScreenProps) {
+export function LevelsScreen({ onNavigate, onStartLevel }: LevelsScreenProps) {
   const levels = [
     { id: 1, name: "TIDE POOLS", stars: 3, unlocked: true, difficulty: "EASY" },
     { id: 2, name: "CORAL COVE", stars: 2, unlocked: true, difficulty: "EASY" },
@@ -39,7 +40,7 @@ export function LevelsScreen({ onNavigate }: LevelsScreenProps) {
         <Header 
           title="SELECT LEVEL" 
           subtitle="Choose your beach adventure!"
-          onBack={() => onNavigate('welcome')} 
+          onBack={() => onNavigate('welcome')}
         />
 
         {/* Progress Stats */}
@@ -68,7 +69,7 @@ export function LevelsScreen({ onNavigate }: LevelsScreenProps) {
               className={`p-3 md:p-6 pixel-border rounded-lg cursor-pointer transition-transform hover:scale-105 ${
                 level.unlocked ? 'bg-beach-foam' : 'bg-beach-sand opacity-60'
               }`}
-              onClick={() => level.unlocked && onNavigate('game')}
+              onClick={() => level.unlocked && (onStartLevel ? onStartLevel(level.id) : onNavigate('game'))}
             >
               {/* Level Header */}
               <div className="flex justify-between items-center mb-2 md:mb-4">
@@ -119,7 +120,7 @@ export function LevelsScreen({ onNavigate }: LevelsScreenProps) {
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
           <Button 
-            onClick={() => onNavigate('game')}
+            onClick={() => (onStartLevel ? onStartLevel(1) : onNavigate('game'))}
             className="retro-button pixel-font text-beach-foam text-xs md:text-sm px-6 md:px-8 h-10 md:h-12 w-full sm:w-auto"
           >
             CONTINUE PLAYING
