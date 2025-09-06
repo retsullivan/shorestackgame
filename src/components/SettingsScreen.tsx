@@ -1,9 +1,9 @@
-import React from 'react';
 import { Button } from "./ui/button";
-import { ArrowLeft, Volume2, Music, Gamepad2 } from "lucide-react";
+import { Volume2, Music, Gamepad2 } from "lucide-react";
 import { RetroSlider } from "./RetroSlider";
 import { RetroToggle } from "./RetroToggle";
 import { ScreenBorder } from "./ScreenBorder";
+import { Header } from "./Header";
 import { useState } from "react";
 
 interface SettingsScreenProps {
@@ -21,26 +21,21 @@ export function SettingsScreen({ onNavigate }: SettingsScreenProps) {
 
   return (
     <ScreenBorder>
-      <div className="min-h-screen p-4 md:p-8" style={{ background: 'linear-gradient(135deg, #26a0a7 0%, #4fb3d9 100%)' }}>
+      <div className="min-h-screen px-6 py-6 md:p-8" style={{ background: 'linear-gradient(135deg, #26a0a7 0%, #4fb3d9 100%)' }}>
         <div className="max-w-2xl mx-auto">
         {/* Header */}
-        <div className="flex items-center mb-6 md:mb-8">
-          <Button
-            onClick={() => onNavigate('welcome')}
-            className="retro-button pixel-font text-beach-foam mr-3 md:mr-4 w-10 h-10 md:w-12 md:h-12 p-0"
-          >
-            <ArrowLeft className="w-3 h-3 md:w-4 md:h-4" />
-          </Button>
-          <h1 className="pixel-font text-xl md:text-3xl text-beach-foam">SETTINGS</h1>
-        </div>
+        <Header 
+          title="SETTINGS" 
+          onBack={() => onNavigate('welcome')} 
+        />
 
         {/* Settings Panel */}
-        <div className="bg-beach-foam p-4 md:p-8 pixel-border rounded-none space-y-6 md:space-y-8">
+        <div className="bg-beach-foam p-6 md:p-8 pixel-border rounded-lg space-y-6 md:space-y-8">
           
           {/* Audio Settings */}
           <div className="space-y-4 md:space-y-6">
             <h2 className="pixel-font text-base md:text-lg text-beach-dark-rock flex items-center">
-              <Volume2 className="w-4 h-4 md:w-5 md:h-5 mr-2" />
+              <Volume2 className="w-4 h-4 md:w-5 md:h-5 mr-2" strokeWidth={3} />
               AUDIO
             </h2>
             
@@ -72,7 +67,7 @@ export function SettingsScreen({ onNavigate }: SettingsScreenProps) {
           {/* Controls Settings */}
           <div className="space-y-4 md:space-y-6">
             <h2 className="pixel-font text-base md:text-lg text-beach-dark-rock flex items-center">
-              <Gamepad2 className="w-4 h-4 md:w-5 md:h-5 mr-2" />
+              <Gamepad2 className="w-4 h-4 md:w-5 md:h-5 mr-2" strokeWidth={3} />
               CONTROLS
             </h2>
             
@@ -92,7 +87,7 @@ export function SettingsScreen({ onNavigate }: SettingsScreenProps) {
           {/* Display Settings */}
           <div className="space-y-4 md:space-y-6">
             <h2 className="pixel-font text-base md:text-lg text-beach-dark-rock flex items-center">
-              <Music className="w-4 h-4 md:w-5 md:h-5 mr-2" />
+              <Music className="w-4 h-4 md:w-5 md:h-5 mr-2" strokeWidth={3} />
               DISPLAY
             </h2>
             

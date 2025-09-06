@@ -12,8 +12,8 @@ The game plays like a cross between Tetris and Dr. Mario, but instead of items f
 ### Core Gameplay Features:
 - **Drag & Drop Mechanics**: Players drag rocks from a pile to build stacks
 - **Physics-Based Balancing**: Rocks have different weights and shapes that affect balance
-- **Rock Collection System**: Players can collect unused rocks from previous levels for later use
-- **Character Selection**: Choose between two starting characters - a crab and a starfish
+- **Rock Collection System**: Players can collect unused rocks from previous levels for later use (stetch goal)
+- **Character Selection**: Choose between two starting characters - a snail and a starfish (stretch goal)
 
 ## Level Types
 1. **Balance Challenge**: Make the rocks balance without falling
@@ -24,7 +24,7 @@ The game plays like a cross between Tetris and Dr. Mario, but instead of items f
 
 ## Difficulty Options
 - Easy
-- Medium  
+- Medium (stretch goal)  
 - Hard
 
 ## Technical Requirements
@@ -39,7 +39,7 @@ The game includes the following screens:
 - **Settings Screen**: Game configuration and preferences
 - **How to Play Screen**: Tutorial and game instructions
 - **Levels Screen**: Level selection and progression
-- **Rock Collection Screen**: View and manage collected rocks
+- **Rock Collection Screen**: View and manage collected rocks(stetch goal)
 - **Game Screen**: Main gameplay interface
 
 ## Visual Design

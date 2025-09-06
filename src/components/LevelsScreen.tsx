@@ -1,8 +1,8 @@
-import React from 'react';
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-import { ArrowLeft, Star, Lock } from "lucide-react";
+import { Star, Lock } from "lucide-react";
 import { ScreenBorder } from "./ScreenBorder";
+import { Header } from "./Header";
 
 interface LevelsScreenProps {
   onNavigate: (screen: string) => void;
@@ -33,24 +33,17 @@ export function LevelsScreen({ onNavigate }: LevelsScreenProps) {
 
   return (
     <ScreenBorder>
-      <div className="min-h-screen p-4 md:p-8" style={{ background: 'linear-gradient(180deg, #4fb3d9 0%, #26a0a7 50%, #2081a8 100%)' }}>
+      <div className="min-h-screen px-6 py-6 md:p-8" style={{ background: 'linear-gradient(180deg, #4fb3d9 0%, #26a0a7 50%, #2081a8 100%)' }}>
         <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="flex items-center mb-6 md:mb-8">
-          <Button
-            onClick={() => onNavigate('welcome')}
-            className="retro-button pixel-font text-beach-foam mr-3 md:mr-4 w-10 h-10 md:w-12 md:h-12 p-0"
-          >
-            <ArrowLeft className="w-3 h-3 md:w-4 md:h-4" />
-          </Button>
-          <div>
-            <h1 className="pixel-font text-lg md:text-3xl text-beach-foam">SELECT LEVEL</h1>
-            <p className="pixel-font text-xs md:text-sm text-beach-foam mt-1 md:mt-2">Choose your beach adventure!</p>
-          </div>
-        </div>
+        <Header 
+          title="SELECT LEVEL" 
+          subtitle="Choose your beach adventure!"
+          onBack={() => onNavigate('welcome')} 
+        />
 
         {/* Progress Stats */}
-        <div className="bg-beach-foam p-4 md:p-6 mb-6 md:mb-8 pixel-border">
+        <div className="bg-beach-foam p-6 md:p-6 mb-6 md:mb-8 pixel-border rounded-lg">
           <div className="flex justify-around md:justify-between items-center">
             <div className="text-center">
               <div className="pixel-font text-base md:text-lg text-beach-dark-rock">9</div>
@@ -72,7 +65,7 @@ export function LevelsScreen({ onNavigate }: LevelsScreenProps) {
           {levels.map((level) => (
             <div 
               key={level.id}
-              className={`p-3 md:p-6 pixel-border cursor-pointer transition-transform hover:scale-105 ${
+              className={`p-3 md:p-6 pixel-border rounded-lg cursor-pointer transition-transform hover:scale-105 ${
                 level.unlocked ? 'bg-beach-foam' : 'bg-beach-sand opacity-60'
               }`}
               onClick={() => level.unlocked && onNavigate('game')}
@@ -82,7 +75,7 @@ export function LevelsScreen({ onNavigate }: LevelsScreenProps) {
                 <div className="pixel-font text-sm md:text-lg text-beach-dark-rock">
                   {level.id.toString().padStart(2, '0')}
                 </div>
-                {!level.unlocked && <Lock className="w-3 h-3 md:w-4 md:h-4 text-beach-dark-rock" />}
+                {!level.unlocked && <Lock className="w-3 h-3 md:w-4 md:h-4 text-beach-dark-rock" strokeWidth={3} />}
               </div>
 
               {/* Level Name */}
@@ -107,6 +100,7 @@ export function LevelsScreen({ onNavigate }: LevelsScreenProps) {
                         ? 'text-yellow-400 fill-yellow-400'
                         : 'text-beach-rock'
                     }`}
+                    strokeWidth={3}
                   />
                 ))}
               </div>

@@ -26,7 +26,7 @@ export function ScreenBorder({ children }: ScreenBorderProps) {
         </div>
         
         {/* Right border with rocks */}
-        <div className="absolute top-8 right-0 bottom-8 w-16 bg-beach-rock">
+        <div className="absolute top-8 right-0 bottom-8 w-16 bg-beach-purple">
           <div className="h-full flex flex-col justify-around items-center py-8">
             {/* Decorative rocks */}
             <div className="w-6 h-6 bg-beach-dark-rock pixel-border"></div>
@@ -43,7 +43,7 @@ export function ScreenBorder({ children }: ScreenBorderProps) {
         
         {/* Corner decorations */}
         <div className="absolute top-0 left-0 w-16 h-8 bg-beach-purple"></div>
-        <div className="absolute top-0 right-0 w-16 h-8 bg-beach-coral"></div>
+        <div className="absolute top-0 right-0 w-16 h-8 bg-beach-deep-water"></div>
         <div className="absolute bottom-0 left-0 w-16 h-8 bg-beach-seaweed"></div>
         <div className="absolute bottom-0 right-0 w-16 h-8 bg-beach-sunset"></div>
       </div>

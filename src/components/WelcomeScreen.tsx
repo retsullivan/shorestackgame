@@ -1,7 +1,6 @@
-import React from 'react';
 import { Button } from "./ui/button";
 import { ScreenBorder } from "./ScreenBorder";
-import exampleImage from '../assets/b8fd1025232463cfed6666e09afbdba9b0b25fb2.png';
+import exampleImage from '../assets/518308047_10108918093556027_7835922165081606320_n.jpg';
 
 interface WelcomeScreenProps {
   onNavigate: (screen: string) => void;
@@ -16,16 +15,7 @@ export function WelcomeScreen({ onNavigate }: WelcomeScreenProps) {
         <img src={exampleImage} alt="Beach background" className="w-full h-full object-cover" />
       </div>
       
-      {/* Floating sea creatures */}
-      <div className="absolute top-20 left-16 animate-bounce" style={{ animationDelay: '0.5s' }}>
-        <div className="w-8 h-8 bg-beach-coral rounded-full pixel-border"></div>
-      </div>
-      <div className="absolute top-32 right-20 animate-bounce" style={{ animationDelay: '1s' }}>
-        <div className="w-6 h-6 bg-beach-seaweed rounded-full pixel-border"></div>
-      </div>
-      <div className="absolute bottom-40 left-24 animate-bounce" style={{ animationDelay: '1.5s' }}>
-        <div className="w-10 h-10 bg-beach-water rounded-full pixel-border"></div>
-      </div>
+      
       
       <div className="relative z-10 text-center max-w-2xl">
         {/* Game Title */}
@@ -33,7 +23,7 @@ export function WelcomeScreen({ onNavigate }: WelcomeScreenProps) {
           Creature Climbers
         </h1>
         <h2 className="pixel-font text-sm md:text-lg lg:text-xl text-beach-foam mb-6 md:mb-8 drop-shadow-md">
-          BEACH ADVENTURES
+          BEACH ADVENTURE
         </h2>
         
         {/* Subtitle */}
@@ -65,14 +55,7 @@ export function WelcomeScreen({ onNavigate }: WelcomeScreenProps) {
           </Button>
         </div>
         
-        {/* Decorative elements */}
-        <div className="flex justify-center space-x-4">
-          <div className="w-4 h-4 bg-beach-sand pixel-border"></div>
-          <div className="w-4 h-4 bg-beach-rock pixel-border"></div>
-          <div className="w-4 h-4 bg-beach-sand pixel-border"></div>
-          <div className="w-4 h-4 bg-beach-rock pixel-border"></div>
-          <div className="w-4 h-4 bg-beach-sand pixel-border"></div>
-        </div>
+       
       </div>
       </div>
     </ScreenBorder>

@@ -4909,7 +4909,8 @@
   --beach-sunset: #ff6b9d;
   --beach-coral: #c44569;
   --beach-seaweed: #26a0a7;
-  --beach-rock: #5d737e;
+  /* --beach-rock: #5d737e; */
+  --beach-rock: #206485;
   --beach-dark-rock: #3d4a52;
   --beach-foam: #f7f3e9;
   --beach-purple: #8e44ad;
