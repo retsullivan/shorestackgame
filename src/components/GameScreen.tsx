@@ -1,6 +1,6 @@
 import { Button } from "./ui/button";
 import { Progress } from "./ui/progress";
-import { Pause, RotateCw, RotateCcw, Target, Timer } from "lucide-react";
+import { Pause, RotateCcw, Target, Timer } from "lucide-react";
 import { ScreenBorder } from "./ScreenBorder";
 import { Header } from "./Header";
 import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -13,9 +13,20 @@ interface GameScreenProps {
   levelNumber?: number;
 }
 
-type UIRock = LevelRock & { rotationDeg: Rotation; position: { x: number; y: number } } & RockMotion;
+type UIRock = LevelRock & {
+  rotationDeg: Rotation; // logical snapped angle for UI state
+  position: { x: number; y: number };
+  // Spring-animated rotation for snappy + springy feel
+  rotationDisplayDeg: number;
+  rotationTargetDeg: number;
+  rotationVel: number;
+} & RockMotion;
 
 export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
+  // Rotation spring tuning (lower stiffness/velocity => slower, more time to rotate)
+  const ROT_STIFFNESS = 5.6;  // slowed 50% from 11.2
+  const ROT_DAMPING = 0.34;   // slight damping tweak for smooth settle
+  const ROT_MAX_VEL = 160;    // slowed 50% from 320
   const [score] = useState(0);
   const [timeLeft] = useState(90);
   const [selectedRockId, setSelectedRockId] = useState<string | null>(null);
@@ -64,13 +75,13 @@ export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
       const left = pileRect.left - containerRect.left;
       const top = pileRect.top - containerRect.top;
       const labelHeight = pileLabelRef.current?.getBoundingClientRect().height ?? 0;
-      const trayInnerHeight = Math.max(0, pileRect.height - pileCardPadding * 2 - labelHeight);
+      // keep calculation comment for future responsive rows (no variable to avoid lint warnings)
       const rightEdge = left + pileRect.width;
       const initialized: UIRock[] = levelData.rocks.map((r, i) => {
         const sizePx = rockSizePx(r.size);
         // Align slots from the right edge inward
         const rawX = rightEdge - pileCardPadding - (i + 1) * SLOT_WIDTH + (SLOT_WIDTH - sizePx) / 2;
-        const rawY = top + pileCardPadding + labelHeight + (trayInnerHeight - sizePx) / 2;
+        const rawY = top + pileCardPadding + labelHeight + 4; // keep safely within tray top area
         const minX = left + pileCardPadding;
         const maxX = rightEdge - pileCardPadding - sizePx;
         const minY = top + pileCardPadding + labelHeight;
@@ -80,6 +91,9 @@ export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
         return {
           ...r,
           rotationDeg: 0 as Rotation,
+          rotationDisplayDeg: 0,
+          rotationTargetDeg: 0,
+          rotationVel: 0,
           position: { x, y },
           zIndex: i + 1,
           vy: 0,
@@ -136,22 +150,51 @@ export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
     return stackRect.bottom - containerRect.top - 8;
   };
 
-  const runPhysicsIfNeeded = () => {
+  const runAnimationLoop = () => {
     if (rafRef.current != null) return; // already running
     const step = () => {
       const groundY = computeGroundY();
       let anyFalling = false;
+      let anyRotating = false;
       setRocks((prev) => {
-        const updated = prev.map((rock, i) => {
+        // physics
+        let nextState = prev.map((rock, i) => {
           if (!rock.isFalling) return rock;
           anyFalling = true;
           const others = prev.filter((_, j) => j !== i);
           const next = updateRockFall(rock, others, groundY);
           return next as UIRock;
         });
-        return updated;
+        // spring rotation with wrap-around and damping clamp
+        nextState = nextState.map((r) => {
+          const stiffness = ROT_STIFFNESS;
+          const damping = ROT_DAMPING;
+          const wrap = (v: number) => ((v % 360) + 360) % 360;
+          const norm = (d: number) => {
+            let x = ((d + 180) % 360 + 360) % 360 - 180;
+            return x;
+          };
+          const current = wrap(r.rotationDisplayDeg);
+          const target = wrap(r.rotationTargetDeg);
+          const delta = norm(target - current);
+          const accel = stiffness * delta - damping * r.rotationVel;
+          const newVel = Math.max(-ROT_MAX_VEL, Math.min(ROT_MAX_VEL, r.rotationVel + accel * 16));
+          const proposed = wrap(current + newVel);
+          const newDelta = norm(target - proposed);
+          if (Math.abs(delta) > 0.1 || Math.abs(newVel) > 0.1) anyRotating = true;
+          // If we crossed past the target this frame, snap exactly to target and stop
+          if (Math.sign(delta) !== Math.sign(newDelta)) {
+            return { ...r, rotationDisplayDeg: target, rotationVel: 0 };
+          }
+          // If close enough and slow, snap to target
+          if (Math.abs(newDelta) < 0.1 && Math.abs(newVel) < 0.1) {
+            return { ...r, rotationDisplayDeg: target, rotationVel: 0 };
+          }
+          return { ...r, rotationDisplayDeg: proposed, rotationVel: newVel };
+        });
+        return nextState;
       });
-      if (anyFalling) {
+      if (anyFalling || anyRotating || draggingId) {
         rafRef.current = requestAnimationFrame(step);
       } else {
         if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
@@ -179,16 +222,26 @@ export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
     }
   };
 
-  const rotateSelected = () => {
-    if (!selectedRockId) return;
+  const rotateBy90 = (id: string | null) => {
+    if (!id) return;
     setRocks((prev) =>
       prev.map((r) =>
-        r.id === selectedRockId
-          ? { ...r, rotationDeg: (((r.rotationDeg + 90) % 360) as Rotation) }
+        r.id === id
+          ? {
+              ...r,
+              rotationDeg: (((r.rotationDeg + 90) % 360) as Rotation),
+              rotation: (((r.rotation + 90) % 360) as Rotation),
+              rotationTargetDeg: (((r.rotationTargetDeg + 90) % 360) as number),
+              rotationVel: 0,
+            }
           : r
       )
     );
+    runAnimationLoop();
   };
+
+  // Rotate currently selected rock helper (reserved for future bindings)
+  // const rotateSelected = () => rotateBy90(selectedRockId);
 
   // Slot index mapping by rock id (stable order per level)
   const indexById = useMemo(() => {
@@ -206,9 +259,9 @@ export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
     const top = pileRect.top - containerRect.top;
     const rightEdge = left + pileRect.width;
     const labelHeight = pileLabelRef.current?.getBoundingClientRect().height ?? 0;
-    const trayInnerHeight = Math.max(0, pileRect.height - pileCardPadding * 2 - labelHeight);
+    // keep calculation comment for future responsive rows (no variable to avoid lint warnings)
     const rawX = rightEdge - pileCardPadding - (slotIndex + 1) * SLOT_WIDTH + (SLOT_WIDTH - sizePx) / 2;
-    const rawY = top + pileCardPadding + labelHeight + (trayInnerHeight - sizePx) / 2;
+    const rawY = top + pileCardPadding + labelHeight + 4; // align near top inside tray
     const minX = left + pileCardPadding;
     const maxX = rightEdge - pileCardPadding - sizePx;
     const minY = top + pileCardPadding + labelHeight;
@@ -256,7 +309,7 @@ export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
           setRocks((prev) => prev.map((r) => (r.id === rock.id ? { ...r, position: snapPos, isFalling: false, vy: 0 } : r)));
         } else if (overlapsStack) {
           setRocks((prev) => prev.map((r) => (r.id === draggingId ? { ...r, isFalling: true, vy: 0 } : r)));
-          runPhysicsIfNeeded();
+          runAnimationLoop();
         } else {
           // Not over tray or stack: revert to tray slot
           const slotIndex = indexById.get(rock.id) ?? 0;
@@ -271,6 +324,21 @@ export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
   const isSelected = (id: string) => selectedRockId === id;
 
   const levelData = getLevelData(levelNumber);
+
+  // Keyboard: rotate while dragging (Space)
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === 'Space' || e.key === ' ') {
+        if (draggingId) {
+          e.preventDefault();
+          rotateBy90(draggingId);
+          runAnimationLoop();
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [draggingId]);
 
   return (
     <ScreenBorder>
@@ -333,12 +401,12 @@ export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
         {/* Render Level 1 Rocks */}
         {rocks.map((r) => {
           const sizePx = rockSizePx(r.size);
-          const transform = `translate(${r.position.x}px, ${r.position.y}px) rotate(${r.rotationDeg}deg)`;
+          const transform = `translate(${r.position.x}px, ${r.position.y}px) rotate(${r.rotationDisplayDeg}deg)`;
           const isDragGhost = draggingId === r.id;
           const base = (
             <div
               key={r.id}
-              className={`absolute ${rockColorClass(r.shape)} pixel-border cursor-pointer transition-transform duration-150`}
+              className={`absolute ${rockColorClass(r.shape)} pixel-border cursor-pointer transition-transform duration-50`}
               style={{
                 width: `${sizePx}px`,
                 height: `${sizePx}px`,
@@ -350,6 +418,11 @@ export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
               }}
               onMouseDown={(e) => onMouseDownRock(e, r.id)}
               onClick={() => setSelectedRockId(isSelected(r.id) ? null : r.id)}
+              onTouchStart={(e) => {
+                if (e.touches.length === 2) {
+                  rotateBy90(r.id);
+                }
+              }}
             />
           );
 
@@ -364,7 +437,7 @@ export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
                 onClick={() => setSelectedRockId(isSelected(r.id) ? null : r.id)}
               >
                 <div
-                  className={`${rockColorClass(r.shape)} pixel-border transition-transform duration-150`}
+                  className={`${rockColorClass(r.shape)} pixel-border transition-transform duration-50`}
                   style={{
                     width: `${sizePx}px`,
                     height: `${sizePx}px`,
@@ -383,6 +456,7 @@ export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
         <div
           ref={stackRef}
           className="absolute left-0 right-0 bottom-0 top-32 bg-white pixel-border"
+          style={{ outline: '3px solid #39ff14', outlineOffset: '-2px' }}
         >
           <div className="pixel-font text-[10px] text-beach-dark-rock px-2 py-1">STACK HERE</div>
         </div>
@@ -390,23 +464,13 @@ export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
 
       {/* Game Controls Panel */}
       <div className="bg-beach-foam p-3 md:p-4 pixel-border">
-        <div className="flex items-center justify-between">
-     
-          <div className="flex space-x-2">
-            <Button
-              disabled={!selectedRockId}
-              onClick={rotateSelected}
-              className="retro-button pixel-font text-beach-dark-rock text-xs px-3 md:px-4 h-7 md:h-8 disabled:opacity-50"
-            >
-              <RotateCw className="w-3 h-3 mr-1" strokeWidth={3} />
-              ROTATE
-            </Button>
-            
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+          <div className="pixel-font text-xs md:text-sm text-beach-dark-rock">
+            Rotate while dragging: <span className="font-bold">Space</span> (PC) / <span className="font-bold">two-finger tap</span> (mobile)
           </div>
-        </div>
-        <div className="mt-3 md:mt-4 space-y-2">
-          
-          <Progress value={(rocks.length ? (rocks.filter(r => r.position.x > 320).length / 5) : 0) * 100} className="h-2" />
+          <div className="w-full sm:w-auto">
+            <Progress value={(rocks.length ? (rocks.filter(r => r.position.x > 320).length / 5) : 0) * 100} className="h-2" />
+          </div>
         </div>
       </div>
 

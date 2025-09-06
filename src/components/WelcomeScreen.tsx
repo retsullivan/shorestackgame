@@ -1,6 +1,6 @@
 import { Button } from "./ui/button";
 import { ScreenBorder } from "./ScreenBorder";
-import exampleImage from '../assets/518308047_10108918093556027_7835922165081606320_n.jpg';
+import exampleImage from '../assets/sph_beach_night.jpg';
 
 interface WelcomeScreenProps {
   onNavigate: (screen: string) => void;
