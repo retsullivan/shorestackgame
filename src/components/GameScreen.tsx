@@ -1,32 +1,37 @@
 import { Button } from "./ui/button";
 import { Progress } from "./ui/progress";
-import { Pause, RotateCw, Target, Timer } from "lucide-react";
+import { Pause, RotateCw, RotateCcw, Target, Timer } from "lucide-react";
 import { ScreenBorder } from "./ScreenBorder";
 import { Header } from "./Header";
 import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { getLevelData } from "../levels";
 import { LevelRock } from "../levels/types";
-import { Rotation } from "../physics/rockPhysics";
+import { Rotation, updateRockFall, RockMotion } from "../physics/rockPhysics";
 
 interface GameScreenProps {
   onNavigate: (screen: string) => void;
   levelNumber?: number;
 }
 
+type UIRock = LevelRock & { rotationDeg: Rotation; position: { x: number; y: number } } & RockMotion;
+
 export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
   const [score] = useState(0);
   const [timeLeft] = useState(90);
   const [selectedRockId, setSelectedRockId] = useState<string | null>(null);
-  const [rocks, setRocks] = useState<(LevelRock & { rotationDeg: Rotation; position: { x: number; y: number } })[]>([]);
+  const [rocks, setRocks] = useState<UIRock[]>([]);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement | null>(null);
   const pileRef = useRef<HTMLDivElement | null>(null);
   const stackRef = useRef<HTMLDivElement | null>(null);
   const pileLabelRef = useRef<HTMLDivElement | null>(null);
+  const rafRef = useRef<number | null>(null);
 
   const pileCardPadding = 16;
   const SLOT_WIDTH = 84; // base horizontal slot spacing (responsive adjustments can be layered later)
+
+  const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
   const rockColorClass = (shape: string) => {
     switch (shape) {
@@ -61,21 +66,32 @@ export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
       const labelHeight = pileLabelRef.current?.getBoundingClientRect().height ?? 0;
       const trayInnerHeight = Math.max(0, pileRect.height - pileCardPadding * 2 - labelHeight);
       const rightEdge = left + pileRect.width;
-      const initialized = levelData.rocks.map((r, i) => {
+      const initialized: UIRock[] = levelData.rocks.map((r, i) => {
         const sizePx = rockSizePx(r.size);
         // Align slots from the right edge inward
-        const x = rightEdge - pileCardPadding - (i + 1) * SLOT_WIDTH + (SLOT_WIDTH - sizePx) / 2;
-        const y = top + pileCardPadding + labelHeight + (trayInnerHeight - sizePx) / 2;
+        const rawX = rightEdge - pileCardPadding - (i + 1) * SLOT_WIDTH + (SLOT_WIDTH - sizePx) / 2;
+        const rawY = top + pileCardPadding + labelHeight + (trayInnerHeight - sizePx) / 2;
+        const minX = left + pileCardPadding;
+        const maxX = rightEdge - pileCardPadding - sizePx;
+        const minY = top + pileCardPadding + labelHeight;
+        const maxY = top + pileRect.height - pileCardPadding - sizePx;
+        const x = clamp(rawX, minX, Math.max(minX, maxX));
+        const y = clamp(rawY, minY, Math.max(minY, maxY));
         return {
           ...r,
           rotationDeg: 0 as Rotation,
           position: { x, y },
           zIndex: i + 1,
+          vy: 0,
+          isFalling: false,
         };
       });
       setRocks(initialized);
     };
     requestAnimationFrame(init);
+    const onResize = () => requestAnimationFrame(init);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
   }, [levelNumber]);
 
   const bringToFront = (id: string) => {
@@ -97,6 +113,8 @@ export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
     const cursorY = e.clientY - containerRect.top;
     setDragOffset({ x: rock.position.x - cursorX, y: rock.position.y - cursorY });
     setDraggingId(id);
+    // Pause gravity while dragging
+    setRocks((prev) => prev.map((r) => (r.id === id ? { ...r, isFalling: false, vy: 0 } : r)));
   };
 
   const onMouseMove = (e: React.MouseEvent) => {
@@ -110,7 +128,56 @@ export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
     setRocks((prev) => prev.map((r) => (r.id === draggingId ? { ...r, position: { x: nextX, y: nextY } } : r)));
   };
 
-  // placeholder removed; real endDrag with snap is defined later
+  const computeGroundY = () => {
+    const containerRect = containerRef.current?.getBoundingClientRect();
+    const stackRect = stackRef.current?.getBoundingClientRect();
+    if (!containerRect || !stackRect) return 0;
+    // Ground line inside stack area, a few pixels above bottom border
+    return stackRect.bottom - containerRect.top - 8;
+  };
+
+  const runPhysicsIfNeeded = () => {
+    if (rafRef.current != null) return; // already running
+    const step = () => {
+      const groundY = computeGroundY();
+      let anyFalling = false;
+      setRocks((prev) => {
+        const updated = prev.map((rock, i) => {
+          if (!rock.isFalling) return rock;
+          anyFalling = true;
+          const others = prev.filter((_, j) => j !== i);
+          const next = updateRockFall(rock, others, groundY);
+          return next as UIRock;
+        });
+        return updated;
+      });
+      if (anyFalling) {
+        rafRef.current = requestAnimationFrame(step);
+      } else {
+        if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+    rafRef.current = requestAnimationFrame(step);
+  };
+
+  const resetToTray = () => {
+    // Reposition all rocks back into their tray slots and stop motion
+    setDraggingId(null);
+    setSelectedRockId(null);
+    setRocks((prev) =>
+      prev.map((r) => {
+        const sizePx = rockSizePx(r.size);
+        const slotIndex = indexById.get(r.id) ?? 0;
+        const snapPos = computeTraySlotPosition(slotIndex, sizePx);
+        return { ...r, position: snapPos, isFalling: false, vy: 0, rotationDeg: 0 as Rotation };
+      })
+    );
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  };
 
   const rotateSelected = () => {
     if (!selectedRockId) return;
@@ -140,8 +207,14 @@ export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
     const rightEdge = left + pileRect.width;
     const labelHeight = pileLabelRef.current?.getBoundingClientRect().height ?? 0;
     const trayInnerHeight = Math.max(0, pileRect.height - pileCardPadding * 2 - labelHeight);
-    const x = rightEdge - pileCardPadding - (slotIndex + 1) * SLOT_WIDTH + (SLOT_WIDTH - sizePx) / 2;
-    const y = top + pileCardPadding + labelHeight + (trayInnerHeight - sizePx) / 2;
+    const rawX = rightEdge - pileCardPadding - (slotIndex + 1) * SLOT_WIDTH + (SLOT_WIDTH - sizePx) / 2;
+    const rawY = top + pileCardPadding + labelHeight + (trayInnerHeight - sizePx) / 2;
+    const minX = left + pileCardPadding;
+    const maxX = rightEdge - pileCardPadding - sizePx;
+    const minY = top + pileCardPadding + labelHeight;
+    const maxY = top + pileRect.height - pileCardPadding - sizePx;
+    const x = clamp(rawX, minX, Math.max(minX, maxX));
+    const y = clamp(rawY, minY, Math.max(minY, maxY));
     return { x, y };
   };
 
@@ -149,6 +222,7 @@ export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
     if (draggingId) {
       const rock = rocks.find((r) => r.id === draggingId);
       const pileRect = pileRef.current?.getBoundingClientRect();
+      const stackRect = stackRef.current?.getBoundingClientRect();
       const containerRect = containerRef.current?.getBoundingClientRect();
       if (rock && pileRect && containerRect) {
         const sizePx = rockSizePx(rock.size);
@@ -158,6 +232,14 @@ export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
           right: pileRect.left - containerRect.left + pileRect.width,
           bottom: pileRect.top - containerRect.top + pileRect.height,
         };
+        const stack = stackRect
+          ? {
+              left: stackRect.left - containerRect.left,
+              top: stackRect.top - containerRect.top,
+              right: stackRect.left - containerRect.left + stackRect.width,
+              bottom: stackRect.top - containerRect.top + stackRect.height,
+            }
+          : null;
         const rr = {
           left: rock.position.x,
           top: rock.position.y,
@@ -165,10 +247,21 @@ export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
           bottom: rock.position.y + sizePx,
         };
         const overlaps = !(rr.left > tray.right || rr.right < tray.left || rr.top > tray.bottom || rr.bottom < tray.top);
+        const overlapsStack = stack
+          ? !(rr.left > stack.right || rr.right < stack.left || rr.top > stack.bottom || rr.bottom < stack.top)
+          : false;
         if (overlaps) {
           const slotIndex = indexById.get(rock.id) ?? 0;
           const snapPos = computeTraySlotPosition(slotIndex, sizePx);
-          setRocks((prev) => prev.map((r) => (r.id === rock.id ? { ...r, position: snapPos } : r)));
+          setRocks((prev) => prev.map((r) => (r.id === rock.id ? { ...r, position: snapPos, isFalling: false, vy: 0 } : r)));
+        } else if (overlapsStack) {
+          setRocks((prev) => prev.map((r) => (r.id === draggingId ? { ...r, isFalling: true, vy: 0 } : r)));
+          runPhysicsIfNeeded();
+        } else {
+          // Not over tray or stack: revert to tray slot
+          const slotIndex = indexById.get(rock.id) ?? 0;
+          const snapPos = computeTraySlotPosition(slotIndex, sizePx);
+          setRocks((prev) => prev.map((r) => (r.id === rock.id ? { ...r, position: snapPos, isFalling: false, vy: 0 } : r)));
         }
       }
     }
@@ -224,9 +317,16 @@ export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
         {/* Pile Row (dark) - top of gameplay area, full width, taller */}
         <div
           ref={pileRef}
-          className="absolute top-0 left-0 right-0 h-32 bg-beach-dark-rock pixel-border"
+          className="absolute top-0 left-0 right-0 h-32 bg-beach-dark-rock pixel-border relative w-full"
         >
           <div ref={pileLabelRef} className="pixel-font text-[10px] text-beach-foam px-4 py-2">ROCK PILE</div>
+          <Button
+            onClick={resetToTray}
+            className="absolute top-2 right-2 retro-button pixel-font text-beach-foam text-sm m-1 p-2"
+          >
+            <RotateCcw className="w-3 h-3" strokeWidth={3} />
+            RESET
+          </Button>
         </div>
 
        
@@ -234,16 +334,18 @@ export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
         {rocks.map((r) => {
           const sizePx = rockSizePx(r.size);
           const transform = `translate(${r.position.x}px, ${r.position.y}px) rotate(${r.rotationDeg}deg)`;
+          const isDragGhost = draggingId === r.id;
           const base = (
             <div
               key={r.id}
-              className={`absolute ${rockColorClass(r.shape)} pixel-border cursor-pointer`}
+              className={`absolute ${rockColorClass(r.shape)} pixel-border cursor-pointer transition-transform duration-150`}
               style={{
                 width: `${sizePx}px`,
                 height: `${sizePx}px`,
                 transform,
                 transformOrigin: "center",
                 zIndex: r.zIndex,
+                opacity: isDragGhost ? 0.8 : 1,
                 boxShadow: isSelected(r.id) ? "0 0 0 2px #c0f4ff" : undefined,
               }}
               onMouseDown={(e) => onMouseDownRock(e, r.id)}
@@ -262,11 +364,12 @@ export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
                 onClick={() => setSelectedRockId(isSelected(r.id) ? null : r.id)}
               >
                 <div
-                  className={`${rockColorClass(r.shape)} pixel-border`}
+                  className={`${rockColorClass(r.shape)} pixel-border transition-transform duration-150`}
                   style={{
                     width: `${sizePx}px`,
                     height: `${sizePx}px`,
                     clipPath: "polygon(50% 0%, 100% 100%, 0% 100%)",
+                    opacity: isDragGhost ? 0.8 : 1,
                     boxShadow: isSelected(r.id) ? "0 0 0 2px #c0f4ff" : undefined,
                   }}
                 />
@@ -302,10 +405,7 @@ export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
           </div>
         </div>
         <div className="mt-3 md:mt-4 space-y-2">
-          <div className="flex justify-between items-center">
-            <span className="pixel-font text-xs text-beach-dark-rock">LEVEL 1: MOVE ROCKS TO WHITE AREA</span>
-            <span className="pixel-font text-xs text-beach-dark-rock">5 ROCKS</span>
-          </div>
+          
           <Progress value={(rocks.length ? (rocks.filter(r => r.position.x > 320).length / 5) : 0) * 100} className="h-2" />
         </div>
       </div>

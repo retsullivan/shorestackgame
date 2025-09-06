@@ -24,6 +24,18 @@ export interface Rock {
   position: RockPosition; // world-space translation of local polygon
 }
 
+// Motion state for simple gravity & falling
+export interface RockMotion {
+  vy: number; // vertical velocity (px/frame)
+  isFalling: boolean;
+}
+
+export type RockWithMotion = Rock & RockMotion;
+
+export const GRAVITY = 0.98; // px per frame^2
+export const TERMINAL_VELOCITY = 20; // px per frame
+export const HORIZONTAL_NUDGE = 1.5; // px per frame to slide toward support
+
 export interface StabilityOptions {
   // If > 0, allow centroid to be within this pixel distance from the support polygon boundary
   boundaryTolerancePx?: number;
@@ -87,6 +99,16 @@ export function getWeightedCentroid(points: AnchorPoint[]): Point2D {
     x: sumX / sumWeights,
     y: sumY / sumWeights,
   };
+}
+
+export function getLowestY(rock: Rock): number {
+  const anchors = toWorldAnchors(rock.anchors, rock.position, rock.rotation);
+  return Math.max(...anchors.map((a) => a.y));
+}
+
+export function getHighestSupportY(below: Rock): number {
+  const anchors = toWorldAnchors(below.anchors, below.position, below.rotation);
+  return Math.min(...anchors.map((a) => a.y));
 }
 
 export function pointInsidePolygon(point: Point2D, polygon: Point2D[]): boolean {
@@ -170,6 +192,69 @@ export function checkStability(
 
   // 4) Stability test: centroid must lie inside or near the support polygon
   return pointInOrNearPolygon(centroid, supportPolygon, boundaryTolerancePx);
+}
+
+export function updateRockFall(
+  rock: RockWithMotion,
+  otherRocks: Rock[],
+  groundY: number
+): RockWithMotion {
+  if (!rock.isFalling) return rock;
+
+  // Apply gravity and clamp
+  const nextVy = Math.min(rock.vy + GRAVITY, TERMINAL_VELOCITY);
+  const nextY = rock.position.y + nextVy;
+
+  let updated: RockWithMotion = { ...rock, vy: nextVy, position: { ...rock.position, y: nextY } };
+
+  // Ground collision
+  const lowest = getLowestY(updated);
+  if (lowest >= groundY) {
+    const offset = groundY - lowest;
+    updated = {
+      ...updated,
+      position: { ...updated.position, y: updated.position.y + offset },
+      vy: 0,
+      isFalling: false,
+    };
+    return updated;
+  }
+
+  // Rock collisions (simple: check against support Y)
+  for (const below of otherRocks) {
+    const supportTop = getHighestSupportY(below);
+    const rockBottom = getLowestY(updated);
+    if (rockBottom >= supportTop) {
+      const offset = supportTop - rockBottom;
+      const snapped: RockWithMotion = {
+        ...updated,
+        position: { ...updated.position, y: updated.position.y + offset },
+        vy: 0,
+      };
+
+      const stable = checkStability(snapped, below, { boundaryTolerancePx: 4 });
+      if (stable) {
+        return { ...snapped, isFalling: false };
+      }
+
+      // If unstable, apply a slight horizontal nudge toward the support polygon interior
+      const worldTopAnchors = toWorldAnchors(snapped.anchors, snapped.position, snapped.rotation);
+      const centroid = getWeightedCentroid(worldTopAnchors);
+      const supportPoly = toWorldAnchors(below.anchors, below.position, below.rotation).map(({ x, y }) => ({ x, y }));
+      const minX = Math.min(...supportPoly.map((p) => p.x));
+      const maxX = Math.max(...supportPoly.map((p) => p.x));
+      let nudgeX = 0;
+      if (centroid.x < minX) nudgeX = HORIZONTAL_NUDGE;
+      else if (centroid.x > maxX) nudgeX = -HORIZONTAL_NUDGE;
+      return {
+        ...snapped,
+        position: { ...snapped.position, x: snapped.position.x + nudgeX },
+        isFalling: true,
+      };
+    }
+  }
+
+  return updated;
 }
 
 // Convenience helpers for rotation-only adjustments
