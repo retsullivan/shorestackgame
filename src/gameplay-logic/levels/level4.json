@@ -1,11 +1,12 @@
 {
   "id": 4,
   "name": "SHELL RIDGE",
-  "goal": "Build high with mixed shapes",
+  "goal": "Build a stack taller than your ocean friend",
+  "tip":"You can rotate the rocks by pressing the spacebar",
   "theme": "mixed",
-  "challenge": { "type": "balance", "timeLimit": null, "difficulty": "easy" },
+  "challenge": { "type": "height", "timeLimit": null, "difficulty": "easy" },
   "rocks": [
-    { "id": "rock_large", "count": 2 },
+    { "id": "rock_large", "count": 3 },
     { "id": "rock_small", "count": 3 },
     { "id": "trapezoid_large", "count": 2 },
     { "id": "triangle_small", "count": 2 },

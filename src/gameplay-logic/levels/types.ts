@@ -26,6 +26,7 @@ export interface LevelJson {
   id: number;
   name: string;
   goal?: string;
+  tip?: string;
   challenge?: LevelChallenge;
   rocks: Array<{ id: string; count: number }>;
   theme?: "daytime" | "sunset" | "mixed";
@@ -47,6 +48,7 @@ export interface LevelData {
   id: number;
   name: string;
   goal?: string;
+  tip?: string;
   types: RockType[];
   theme: "daytime" | "sunset" | "mixed";
   challenge?: LevelChallenge;

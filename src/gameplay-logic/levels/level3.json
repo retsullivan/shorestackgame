@@ -1,7 +1,7 @@
 {
   "id": 3,
   "name": "CORAL COVE",
-  "goal": "Stack all the rocks in under 15 seconds",
+  "goal": "Build a stable stack before the tide comes in",
   "theme": "daytime",
   "challenge": { "type": "timed", "timeLimit": 15, "difficulty": "medium" },
   "rocks": [

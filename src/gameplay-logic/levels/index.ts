@@ -28,6 +28,7 @@ export function getLevelData(id: number): LevelData {
     id: lvl.id,
     name: lvl.name,
     goal: lvl.goal,
+    tip: lvl.tip,
     types,
     theme: lvl.theme ?? "daytime",
     challenge: lvl.challenge,
