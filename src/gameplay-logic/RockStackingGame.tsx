@@ -25,6 +25,13 @@ const TRAY_H = 100; // canvas tray inside gameplay area (keep for MVP)
 export interface RockStackingGameProps {
   types: RockType[];
   theme?: "daytime" | "sunset" | "mixed";
+  paused?: boolean;
+  onStateChange?: (state: {
+    totalPlaced: number;
+    staticCount: number;
+    remainingTray: number;
+    touchingGroundStatic: number;
+  }) => void;
 }
 
 export interface RockStackingGameHandle {
@@ -37,6 +44,8 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
   const [types, setTypes] = useState<RockType[]>([]);
   const [rocks, setRocks] = useState<RockInstance[]>([]);
   const imagesRef = useRef<Record<string, { img: HTMLImageElement; crop: { x: number; y: number; w: number; h: number } }>>({});
+  const pausedRef = useRef<boolean>(false);
+  useEffect(() => { pausedRef.current = !!props.paused; }, [props.paused]);
   // Eagerly import all sprite URLs at build time
   const spriteUrlMap = (import.meta as any).glob("../assets/rock_art/**/**.png", { eager: true, as: "url" }) as Record<string, string>;
   // Slight visual overscan so bitmaps appear to touch despite transparent borders
@@ -328,12 +337,14 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
 
       // Lightweight physics step per frame
       const ground = floorY();
-      const settledList = rocks.filter(r => r.isStatic && !r.dragging);
-      rocks.forEach(r => {
-        if (!r.dragging && !r.isStatic) {
-          updatePhysics(r, settledList, ground);
-        }
-      });
+      if (!pausedRef.current) {
+        const settledList = rocks.filter(r => r.isStatic && !r.dragging);
+        rocks.forEach(r => {
+          if (!r.dragging && !r.isStatic) {
+            updatePhysics(r, settledList, ground);
+          }
+        });
+      }
 
       rocks.forEach((r) => {
         r.displayRotation += (r.targetRotation - r.displayRotation) * 0.25;
@@ -344,6 +355,19 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
       }
 
       drawRocks();
+
+      // Report game state upward each frame if requested
+      if (props.onStateChange) {
+        const touchingGroundStatic = rocks.filter(r => r.isStatic && !r.dragging).filter(r => {
+          const pts = toWorldPoly(r);
+          const lowestY = Math.max(...pts.map(p => p.y));
+          return Math.abs(lowestY - ground) <= 1.0;
+        }).length;
+        const staticCount = rocks.filter(r => r.isStatic && !r.dragging).length;
+        const totalPlaced = rocks.length;
+        const remainingTray = types.reduce((acc, t) => acc + (t.count || 0), 0);
+        props.onStateChange({ totalPlaced, staticCount, remainingTray, touchingGroundStatic });
+      }
       requestAnimationFrame(render);
     }
     render();
@@ -458,6 +482,7 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
     if (!canvas || types.length === 0) return;
 
     const onDown = (clientX: number, clientY: number, touchCount = 1) => {
+      if (pausedRef.current) return;
       const pos = screenToCanvasPos(canvas, clientX, clientY);
       if (pos.y < TRAY_H) {
         const idx = pickTrayIndex(pos.x);
@@ -497,6 +522,7 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
     };
 
     const onMove = (clientX: number, clientY: number) => {
+      if (pausedRef.current) return;
       const dr = dragRef.current.rock;
       if (!dr) return;
       const pos = screenToCanvasPos(canvas, clientX, clientY);
@@ -505,6 +531,7 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
     };
 
     const onUp = (clientX: number, clientY: number) => {
+      if (pausedRef.current) return;
       const dr = dragRef.current.rock;
       if (!dr) return;
       dr.dragging = false;
@@ -541,6 +568,7 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
     };
 
     const keydown = (e: KeyboardEvent) => {
+      if (pausedRef.current) return;
       if (e.code === "Space" && dragRef.current.rock) {
         e.preventDefault();
         rotateDragging(90);

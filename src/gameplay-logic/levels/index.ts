@@ -2,6 +2,7 @@ import { LevelData, LevelJson, RockCatalog, RockType } from "./types";
 import level1 from "./level1.json";
 import level2 from "./level2.json";
 import level3 from "./level3.json";
+import level4 from "./level4.json";
 import catalog from "../rock_catalog.json";
 
 function buildTypes(level: LevelJson, cat: RockCatalog): RockType[] {
@@ -19,6 +20,7 @@ export function getLevelData(id: number): LevelData {
     1: level1 as LevelJson,
     2: level2 as LevelJson,
     3: level3 as LevelJson,
+    4: level4 as LevelJson,
   };
   const lvl = lvls[id] ?? (level1 as LevelJson);
   const types = buildTypes(lvl, catalog as RockCatalog);
@@ -28,6 +30,7 @@ export function getLevelData(id: number): LevelData {
     goal: lvl.goal,
     types,
     theme: lvl.theme ?? "daytime",
+    challenge: lvl.challenge,
   };
 }
 

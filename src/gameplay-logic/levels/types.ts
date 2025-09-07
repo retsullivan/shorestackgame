@@ -12,11 +12,21 @@ export interface RockType {
   crop?: { x: number; y: number; w: number; h: number }; // source crop within sprite (pixels)
 }
 
+export type ChallengeType = "balance" | "timed";
+export type ChallengeDifficulty = "easy" | "medium" | "hard";
+
+export interface LevelChallenge {
+  type: ChallengeType;
+  timeLimit: number | null;
+  difficulty: ChallengeDifficulty;
+}
+
 // Shape of per-level JSON input (quantities for each rock id)
 export interface LevelJson {
   id: number;
   name: string;
   goal?: string;
+  challenge?: LevelChallenge;
   rocks: Array<{ id: string; count: number }>;
   theme?: "daytime" | "sunset" | "mixed";
 }
@@ -39,6 +49,7 @@ export interface LevelData {
   goal?: string;
   types: RockType[];
   theme: "daytime" | "sunset" | "mixed";
+  challenge?: LevelChallenge;
 }
 
 

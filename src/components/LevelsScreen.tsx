@@ -117,20 +117,7 @@ export function LevelsScreen({ onNavigate, onStartLevel }: LevelsScreenProps) {
           </Button>
         </div>
 
-        {/* Floating sea elements */}
-        {!isMobile && (
-          <>
-            <div className="fixed top-20 left-10 animate-bounce" style={{ animationDelay: '0s' }}>
-              <div className="w-4 h-4 bg-beach-foam rounded-full pixel-border opacity-80"></div>
-            </div>
-            <div className="fixed top-40 right-16 animate-bounce" style={{ animationDelay: '1s' }}>
-              <div className="w-6 h-6 bg-beach-foam rounded-full pixel-border opacity-80"></div>
-            </div>
-            <div className="fixed bottom-32 left-20 animate-bounce" style={{ animationDelay: '2s' }}>
-              <div className="w-5 h-5 bg-beach-foam rounded-full pixel-border opacity-80"></div>
-            </div>
-          </>
-        )}
+        
         </div>
       </div>
     </ScreenBorder>

@@ -1,14 +1,13 @@
 {
   "id": 3,
-  "name": "SHELL RIDGE",
-  "goal": "Build high with mixed shapes",
-  "theme": "mixed",
+  "name": "CORAL COVE",
+  "goal": "Stack all the rocks in under 15 seconds",
+  "theme": "daytime",
+  "challenge": { "type": "timed", "timeLimit": 15, "difficulty": "medium" },
   "rocks": [
-    { "id": "rock_large", "count": 2 },
-    { "id": "rock_small", "count": 3 },
-    { "id": "trapezoid_large", "count": 2 },
-    { "id": "triangle_small", "count": 2 },
-    { "id": "isoceles_large", "count": 1 }
+    { "id": "rock_small", "count": 2 },
+    { "id": "trapezoid_small", "count": 3 },
+    { "id": "triangle_small", "count": 1 }
   ]
 }
 

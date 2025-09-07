@@ -29,7 +29,7 @@ export default function App() {
       case 'levels':
         return <LevelsScreen onNavigate={handleNavigate} onStartLevel={handleStartLevel} />;
       case 'game':
-        return <GameScreen onNavigate={handleNavigate} levelNumber={selectedLevel} />;
+        return <GameScreen onNavigate={handleNavigate} levelNumber={selectedLevel} onStartLevel={handleStartLevel} />;
       default:
         return <WelcomeScreen onNavigate={handleNavigate} />;
     }
