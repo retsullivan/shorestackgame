@@ -3,7 +3,7 @@ import { Badge } from "./ui/badge";
 import { Star, Lock } from "lucide-react";
 import { ScreenBorder } from "./ScreenBorder";
 import { Header } from "./Header";
-import { useIsMobile } from "./ui/use-mobile";
+import { listLevels } from "../gameplay-logic/levels";
 
 interface LevelsScreenProps {
   onNavigate: (screen: string) => void;
@@ -11,18 +11,16 @@ interface LevelsScreenProps {
 }
 
 export function LevelsScreen({ onNavigate, onStartLevel }: LevelsScreenProps) {
-  const isMobile = useIsMobile();
-  const levels = [
-    { id: 1, name: "TIDE POOLS", stars: 3, unlocked: true, difficulty: "EASY" },
-    { id: 2, name: "CORAL COVE", stars: 2, unlocked: true, difficulty: "EASY" },
-    { id: 3, name: "ROCKY SHORE", stars: 3, unlocked: true, difficulty: "EASY" },
-    { id: 4, name: "KELP FOREST", stars: 1, unlocked: true, difficulty: "MEDIUM" },
-    { id: 5, name: "DEEP WATERS", stars: 0, unlocked: true, difficulty: "MEDIUM" },
-    { id: 6, name: "STORM BEACH", stars: 0, unlocked: false, difficulty: "MEDIUM" },
-    { id: 7, name: "WHALE POINT", stars: 0, unlocked: false, difficulty: "HARD" },
-    { id: 8, name: "MYSTIC CAVES", stars: 0, unlocked: false, difficulty: "HARD" },
-    { id: 9, name: "CRYSTAL DEPTHS", stars: 0, unlocked: false, difficulty: "EXPERT" },
-  ];
+  const levels = listLevels()
+    .sort((a, b) => a.id - b.id)
+    .map((lvl) => ({
+      id: lvl.id,
+      name: lvl.name,
+      // TODO: wire stars/unlocks to real progress data; defaults for now
+      stars: 0,
+      unlocked: true,
+      difficulty: (lvl.challenge?.difficulty ?? "easy").toUpperCase(),
+    }));
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {

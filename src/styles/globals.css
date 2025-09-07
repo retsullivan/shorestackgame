@@ -273,3 +273,22 @@ body {
 .wave-surge {
   animation: wave-surge 1000ms ease-out forwards;
 }
+
+/* Snail climb animation: rises up and slightly left as if climbing */
+@keyframes snail-climb-frames {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-4px, -10px); }
+  40% { transform: translate(-8px, -20px); }
+  60% { transform: translate(-12px, -32px); }
+  80% { transform: translate(-16px, -44px); }
+  100% { transform: translate(-20px, -58px); }
+}
+
+.snail-climb {
+  animation: snail-climb-frames 1400ms steps(8, end) forwards;
+}
+
+/* Smoothly move container when we change to absolute coordinates */
+.snail-move {
+  transition: left 400ms ease-out, top 400ms ease-out, right 400ms ease-out, bottom 400ms ease-out, transform 400ms ease-out;
+}

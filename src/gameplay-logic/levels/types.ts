@@ -12,7 +12,7 @@ export interface RockType {
   crop?: { x: number; y: number; w: number; h: number }; // source crop within sprite (pixels)
 }
 
-export type ChallengeType = "balance" | "timed";
+export type ChallengeType = "balance" | "timed" | "height";
 export type ChallengeDifficulty = "easy" | "medium" | "hard";
 
 export interface LevelChallenge {

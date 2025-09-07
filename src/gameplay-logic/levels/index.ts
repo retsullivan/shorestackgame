@@ -36,4 +36,9 @@ export function getLevelData(id: number): LevelData {
   };
 }
 
+// Return raw LevelJson objects for listing/metadata purposes (e.g., levels screen)
+export function listLevels(): LevelJson[] {
+  return [level1 as LevelJson, level2 as LevelJson, level3 as LevelJson, level4 as LevelJson];
+}
+
 
