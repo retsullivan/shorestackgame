@@ -1,0 +1,21 @@
+{
+  "easy": {
+    "minOverlapRatio": 0.25,
+    "allowRectOnTriangle": true,
+    "triangleTipTolerance": 0.5,
+    "requireFlatSupportForTip": false
+  },
+  "medium": {
+    "minOverlapRatio": 0.5,
+    "allowRectOnTriangle": true,
+    "triangleTipTolerance": 0.25,
+    "requireFlatSupportForTip": true
+  },
+  "hard": {
+    "minOverlapRatio": 0.75,
+    "allowRectOnTriangle": false,
+    "triangleTipTolerance": 0.1,
+    "requireFlatSupportForTip": true
+  }
+}
+

@@ -1,15 +1,10 @@
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
-import gsap from "gsap";
+// gsap no longer used for discrete landings; physics loop animates via position updates
 import {
   Rotation,
-  Point,
   AnchorPoint,
   RockPoly,
-  toWorldPoly,
-  polygonsIntersectSAT,
-  aabb,
-  stableOn,
-  stableOnMultiple,
+  updatePhysics,
 } from "./physics/physics2d";
 
 interface RockType {
@@ -30,13 +25,7 @@ interface RockInstance extends RockPoly {
 }
 
 const TRAY_H = 100; // canvas tray inside gameplay area (keep for MVP)
-// Tuning for post-landing stability handling
-const STABILITY_TOLERANCE_PX = 2;    // widened tolerance for more forgiving balance
-const NUDGE_WITHIN_PX = 10;           // larger window to allow corrective nudge
-const NUDGE_ANIM_MS = 260;            // duration of the corrective nudge
-// Tip-handling tuning
-const TIP_BAND_HEIGHT = 4;            // height of top surface band when detecting a tip
-const TIP_THRESHOLD_WIDTH = 16;       // if support top band narrower than this, treat as tip
+// (deprecated) post-landing tuning constants no longer used with physics loop
 
 function makeTypes(): RockType[] {
   return [
@@ -226,6 +215,15 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, {}>(function RockSta
       drawTray();
       drawStackArea();
 
+      // Lightweight physics step per frame
+      const ground = floorY();
+      const settledList = rocks.filter(r => r.isStatic && !r.dragging);
+      rocks.forEach(r => {
+        if (!r.dragging && !r.isStatic) {
+          updatePhysics(r, settledList, ground);
+        }
+      });
+
       rocks.forEach((r) => {
         r.displayRotation += (r.targetRotation - r.displayRotation) * 0.25;
       });
@@ -243,86 +241,21 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, {}>(function RockSta
     return () => window.removeEventListener("resize", onResize);
   }, [types, rocks]);
 
-  function worldPolyOf(r: RockInstance): Point[] {
-    return toWorldPoly(r);
-  }
+  // worldPolyOf helper no longer needed; use toWorldPoly directly when necessary
 
-  function intersectsAny(r: RockInstance, ignore?: RockInstance): RockInstance | null {
-    const pw = worldPolyOf(r);
-    const box = aabb(pw);
-    for (const o of rocks) {
-      if (o === r || o === ignore) continue;
-      const ow = worldPolyOf(o);
-      const bb = aabb(ow);
-      if (box.maxX < bb.minX || box.minX > bb.maxX || box.maxY < bb.minY || box.minY > bb.maxY) {
-        continue;
-      }
-      if (polygonsIntersectSAT(pw, ow)) return o;
-    }
-    return null;
-  }
+  // intersectsAny unused with continuous physics; broad-phase handled implicitly in updatePhysics
 
   function floorY() {
     return Math.max(0, dimsRef.current.cssHeight - 20);
   }
 
-  function computeRestingY(r: RockInstance): { y: number; support: RockInstance | null } {
-    const startY = r.position.y;
-    const maxY = floorY();
-    const tmp: RockInstance = { ...r };
-    for (let y = startY; y <= maxY; y += 1) {
-      tmp.position = { x: r.position.x, y };
-      // Ignore self by passing the original reference
-      const hit = intersectsAny(tmp, r);
-      if (hit) {
-        // Distinguish side contact vs. top-surface contact.
-        // Only stop when the falling rock's bottom edge reaches (or is below) the support's top band.
-        const bottomY = Math.max(...toWorldPoly(tmp).map((p) => p.y));
-        const supTop = Math.min(...toWorldPoly(hit).map((p) => p.y));
-        if (bottomY >= supTop - 0.5) {
-          return { y: y - 1, support: hit };
-        } else {
-          // Side touch: keep descending
-          continue;
-        }
-      }
-    }
-    return { y: maxY, support: null };
-  }
+  // computeRestingY no longer used; physics loop decides resting dynamically
 
-  // Compute a diagonal fall path (slides horizontally as it drops) and return first collision or floor
-  function computeDiagonalLanding(r: RockInstance, dir: 1 | -1): { x: number; y: number; support: RockInstance | null } {
-    const startY = r.position.y;
-    const maxY = floorY();
-    const totalDy = Math.max(1, maxY - startY);
-    // Horizontal drift scaled to fall height, capped for control
-    const totalDx = dir * Math.min(80, Math.max(20, totalDy * 0.25));
-    const tmp: RockInstance = { ...r };
-    for (let i = 0; i <= totalDy; i++) {
-      const t = i / totalDy;
-      const y = startY + i;
-      const x = r.position.x + totalDx * t;
-      tmp.position = { x, y };
-      const hit = intersectsAny(tmp, r);
-      if (hit) {
-        const prevT = Math.max(0, (i - 1) / totalDy);
-        const prevX = r.position.x + totalDx * prevT;
-        const prevY = startY + i - 1;
-        return { x: prevX, y: prevY, support: hit };
-      }
-    }
-    return { x: r.position.x + totalDx, y: maxY, support: null };
-  }
+  // computeDiagonalLanding not used with continuous physics
 
-  function supportBandWidth(s: RockInstance): number {
-    const pts = toWorldPoly(s);
-    const minY = Math.min(...pts.map((p) => p.y));
-    const band = pts.filter((p) => p.y <= minY + TIP_BAND_HEIGHT);
-    if (band.length === 0) return 0;
-    const l = Math.min(...band.map((p) => p.x));
-    const r = Math.max(...band.map((p) => p.x));
-    return Math.max(0, r - l);
-  }
+  // Chain-reaction recheck is now handled implicitly by updatePhysics interacting each frame.
+
+  // supportBandWidth not used with continuous physics
 
   function pickTrayIndex(x: number): number {
     const slotW = 64, pad = 16, baseX = 16;
@@ -409,94 +342,9 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, {}>(function RockSta
         setRocks((rs) => rs.filter((r) => r !== dr));
         setTypes((ts) => ts.map((t) => (t.id === dr.typeId ? { ...t, count: t.count + 1 } : t)));
       } else {
-        const { y: restY, support } = computeRestingY(dr);
-        gsap.to(dr.position, { y: restY, duration: 0.35, ease: "power2.in" });
-        gsap.to(dr.position, {
-          y: restY + 4,
-          duration: 0.12,
-          ease: "power1.out",
-          yoyo: true,
-          repeat: 1,
-          delay: 0.35,
-        });
-
-        const checkAfter = () => {
-          if (!support) return;
-          const tolerance = STABILITY_TOLERANCE_PX;
-          // Check stability against primary support AND any neighbors overlapping the landing x-span
-          const landingSpan = {
-            minX: Math.min(...toWorldPoly(dr).map(p => p.x)),
-            maxX: Math.max(...toWorldPoly(dr).map(p => p.x)),
-          };
-          const nearby = rocks.filter(r => r !== dr).filter(r => {
-            const pts = toWorldPoly(r);
-            const minX = Math.min(...pts.map(p => p.x));
-            const maxX = Math.max(...pts.map(p => p.x));
-            return !(landingSpan.minX > maxX || landingSpan.maxX < minX);
-          });
-          const isStable = stableOn(dr, support, tolerance) || stableOnMultiple(dr, [support, ...nearby], { tolerancePx: tolerance });
-          if (!isStable) {
-            const topPoly = toWorldPoly(dr);
-            const topC = topPoly.reduce(
-              (acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }),
-              { x: 0, y: 0 }
-            );
-            topC.x /= dr.anchors.length; topC.y /= dr.anchors.length;
-
-            const supPoly = toWorldPoly(support);
-            const supC = supPoly.reduce(
-              (acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }),
-              { x: 0, y: 0 }
-            );
-            supC.x /= supPoly.length; supC.y /= supPoly.length;
-
-            // Compute horizontal correction needed to bring centroid into support's x-span
-            const minX = Math.min(...supPoly.map((p) => p.x));
-            const maxX = Math.max(...supPoly.map((p) => p.x));
-            let correctionX = 0;
-            if (topC.x < minX) correctionX = minX - topC.x;
-            else if (topC.x > maxX) correctionX = maxX - topC.x;
-
-            const bandW = supportBandWidth(support);
-            const dir = (Math.sign(topC.x - supC.x) || 1) as 1 | -1;
-
-            // If sitting on a narrow tip, slide diagonally without snapping/settling on it
-            if (bandW > 0 && bandW < TIP_THRESHOLD_WIDTH) {
-              const landing = computeDiagonalLanding(dr, dir);
-              const tl = gsap.timeline();
-              tl.to(dr.position, { x: landing.x, duration: 0.6, ease: "power2.in" }, 0);
-              tl.to(dr.position, { y: landing.y, duration: 0.6, ease: "power2.in" }, 0);
-              tl.to(dr.position, { y: landing.y + 4, duration: 0.12, ease: "power1.out", yoyo: true, repeat: 1 }, ">");
-              return;
-            }
-
-            if (Math.abs(correctionX) > 0 && Math.abs(correctionX) <= NUDGE_WITHIN_PX) {
-              // Gentle nudge toward interior instead of tipping
-              gsap.to(dr.position, { x: dr.position.x + correctionX, duration: NUDGE_ANIM_MS / 1000, ease: "power2.out" });
-              return; // treat as settled after nudge
-            }
-
-            // Far from stable → tip, spin 90°, and fall along a diagonal onto floor or lower rock
-            const dir2 = (Math.sign(topC.x - supC.x) || 1) as 1 | -1; // +1 right, -1 left
-            const landing = computeDiagonalLanding(dr, dir2);
-            const spinDeg = dir2 > 0 ? 90 : -90; // rotate 90° in fall direction
-
-            const tl = gsap.timeline();
-            tl.to(dr.position, { x: landing.x, duration: 0.7, ease: "power2.in" }, 0);
-            tl.to(dr.position, { y: landing.y, duration: 0.7, ease: "power2.in" }, 0);
-            tl.to(dr, { displayRotation: dr.displayRotation + spinDeg, duration: 0.7, ease: "power2.inOut" }, 0);
-            // small bounce on land
-            tl.to(dr.position, { y: landing.y + 4, duration: 0.12, ease: "power1.out", yoyo: true, repeat: 1 }, ">");
-            tl.eventCallback("onComplete", () => {
-              const add: 90 | -90 = dir2 > 0 ? 90 : -90;
-              const snapped = (((((dr.rotation + add) % 360) + 360) % 360) as Rotation);
-              dr.rotation = snapped;
-              dr.targetRotation = snapped;
-              dr.displayRotation = snapped;
-            });
-          }
-        };
-        setTimeout(checkAfter, 520);
+        // Start physics-based fall
+        dr.isStatic = false;
+        dr.velocity = dr.velocity || { x: 0, y: 0 };
       }
 
       dragRef.current.rock = null;
