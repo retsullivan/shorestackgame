@@ -133,7 +133,7 @@ export function stableOn(top: RockPoly, support: RockPoly, tolerancePx = 0): boo
   // Approximate the support surface as its upper band
   const supportWorld = toWorldPoly(support);
   const supMinY = Math.min(...supportWorld.map((p) => p.y));
-  const bandHeight = 4; // stricter: thinner top surface band
+  const bandHeight = 6; // slightly thicker band for larger sprites
   const supportBandPoints = supportWorld.filter((p) => p.y <= supMinY + bandHeight);
   if (supportBandPoints.length === 0) return false;
   const supMinX = Math.min(...supportBandPoints.map((p) => p.x));
@@ -147,7 +147,7 @@ export function stableOn(top: RockPoly, support: RockPoly, tolerancePx = 0): boo
 
   // Minimum required overlap to consider balanced (prevents tip-on-point balancing)
   // Disallow balancing on sharp points: require a meaningful support width
-  if (supBandWidth < 12) return false; // disallow very narrow supports
+  if (supBandWidth < 16) return false; // disallow very narrow supports
 
   // Require overlap relative to the top base width, tunable by difficulty
   const minRequired = Math.max(12, topBaseWidth * cfg.minOverlapRatio);
@@ -202,7 +202,7 @@ export function stableOnMultiple(top: RockPoly, supports: RockPoly[], options?: 
   const topBaseWidth = Math.max(0, topMaxX - topMinX);
 
   // Build union of support top-band intervals
-  const bandHeight = 4;
+  const bandHeight = 6;
   const intervals: Array<{ l: number; r: number; w: number }> = [];
   for (const s of supports) {
     const pts = toWorldPoly(s);
@@ -328,11 +328,11 @@ export const FRICTION = 0.9;   // simple sliding slowdown
 export const TIME_STEP = 1;    // assume ~60fps; keep as integer for simplicity
 const MAX_BACKTRACK_PIXELS = 64; // how far we'll step back to resolve penetration
 const BACKTRACK_STEP = 1;        // pixel step size when resolving overlap
-const CONTACT_Y_EPS = 1.5;       // tolerance when deciding top/bottom contact alignment
+const CONTACT_Y_EPS = 3.0;       // tolerance when deciding top/bottom contact alignment
 const TIP_ROT_DEG = 90;         // degrees to rotate when tipping
 const WOBBLE_DEG = 4;           // small settle wobble rotation in degrees
 const WOBBLE_PIX = 3;           // small settle bounce in px
-const CONTACT_DIST_EPS = 2.0;   // distance tolerance for vertex-to-edge contacts
+const CONTACT_DIST_EPS = 3.0;   // distance tolerance for vertex-to-edge contacts
 
 function wobbleSettle(rock: RockPoly) {
   const hasDisplay = (rock as any).displayRotation !== undefined;
@@ -518,7 +518,19 @@ export function updatePhysics(
       return;
     }
 
-    // If we have supports directly under the rock, test stability and contact count.
+    // If we have supports directly under the rock, first snap the rock down to visually touch
+    const supTops = touching.map(s => Math.min(...toWorldPoly(s).map(p => p.y)));
+    if (supTops.length > 0) {
+      const targetTop = Math.min(...supTops);
+      const rBottomNow = Math.max(...toWorldPoly(rock).map(p => p.y));
+      const correction = targetTop - rBottomNow;
+      // small snap so bitmaps and polygons visually meet, similar to ground clamp
+      if (Math.abs(correction) <= CONTACT_Y_EPS) {
+        rock.position.y += correction;
+      }
+    }
+
+    // Now test stability and contact count at snapped position
     const contacts = countSupportContacts(rock, touching);
     const stable = stableOnMultiple(rock, touching, { tolerancePx: 0 });
     if (stable || contacts >= 2) {

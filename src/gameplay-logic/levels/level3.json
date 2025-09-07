@@ -1,0 +1,15 @@
+{
+  "id": 3,
+  "name": "SHELL RIDGE",
+  "goal": "Build high with mixed shapes",
+  "theme": "mixed",
+  "rocks": [
+    { "id": "rock_large", "count": 2 },
+    { "id": "rock_small", "count": 3 },
+    { "id": "trapezoid_large", "count": 2 },
+    { "id": "triangle_small", "count": 2 },
+    { "id": "isoceles_large", "count": 1 }
+  ]
+}
+
+

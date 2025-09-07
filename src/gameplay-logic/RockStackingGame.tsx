@@ -4,6 +4,8 @@ import {
   Rotation,
   RockPoly,
   updatePhysics,
+  toWorldPoly,
+  stableOnMultiple,
 } from "./physics/physics2d";
 import { RockType } from "./levels/types";
 
@@ -14,6 +16,7 @@ interface RockInstance extends RockPoly {
   dragging: boolean;
   targetRotation: Rotation;
   displayRotation: number;
+  variantTheme?: "daytime" | "sunset";
 }
 
 const TRAY_H = 100; // canvas tray inside gameplay area (keep for MVP)
@@ -21,6 +24,7 @@ const TRAY_H = 100; // canvas tray inside gameplay area (keep for MVP)
 
 export interface RockStackingGameProps {
   types: RockType[];
+  theme?: "daytime" | "sunset" | "mixed";
 }
 
 export interface RockStackingGameHandle {
@@ -32,6 +36,12 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
   const dimsRef = useRef<{ cssWidth: number; cssHeight: number; dpr: number }>({ cssWidth: 0, cssHeight: 0, dpr: 1 });
   const [types, setTypes] = useState<RockType[]>([]);
   const [rocks, setRocks] = useState<RockInstance[]>([]);
+  const imagesRef = useRef<Record<string, { img: HTMLImageElement; crop: { x: number; y: number; w: number; h: number } }>>({});
+  // Eagerly import all sprite URLs at build time
+  const spriteUrlMap = (import.meta as any).glob("../assets/rock_art/**/**.png", { eager: true, as: "url" }) as Record<string, string>;
+  // Slight visual overscan so bitmaps appear to touch despite transparent borders
+  const SPRITE_OVERSCAN = 1.05; // world draw
+  const TRAY_OVERSCAN = 1.02;   // tray preview
   const dragRef = useRef<{ rock: RockInstance | null; offX: number; offY: number; secondFingerDown: boolean }>(
     { rock: null, offX: 0, offY: 0, secondFingerDown: false }
   );
@@ -40,6 +50,78 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
     // initialize tray types from props; deep copy counts so we can mutate locally
     setTypes(props.types.map(t => ({ ...t, anchors: t.anchors.map(a => ({ ...a })) })));
   }, [props.types]);
+
+  // Load sprite images for needed shapes/sizes based on theme
+  useEffect(() => {
+    const theme = props.theme ?? "daytime";
+    const need = new Set<string>();
+    for (const t of props.types) {
+      const sprite = t.sprite ?? "rock";
+      const size = t.size ?? "small";
+      need.add(`${theme}_${sprite}_${size}`);
+      if (theme === "mixed") {
+        // preload both to avoid hitching
+        need.add(`daytime_${sprite}_${size}`);
+        need.add(`sunset_${sprite}_${size}`);
+      }
+    }
+    const resolveUrl = (th: string, sp: string, sz: string): string | null => {
+      const folder = sz === "large" ? "large" : "small";
+      // small files omit _small in filename
+      const file = sz === "large" ? `${th}_${sp}_large.png` : `${th}_${sp}.png`;
+      const rel = `../assets/rock_art/${folder}/${file}`;
+      return spriteUrlMap[rel] ?? null;
+    };
+    const imgs: Record<string, { img: HTMLImageElement; crop: { x: number; y: number; w: number; h: number } }> = {};
+    let remaining = need.size;
+    if (remaining === 0) return;
+    need.forEach(key => {
+      const [th, sp, sz] = key.split("_");
+      const url = resolveUrl(th, sp, sz);
+      if (!url) { remaining--; return; }
+      const img = new Image();
+      img.src = url;
+      img.onload = () => {
+        // compute opaque bounds (auto-crop) to remove transparent margins
+        try {
+          const w = img.naturalWidth; const h = img.naturalHeight;
+          const off = document.createElement('canvas');
+          off.width = w; off.height = h;
+          const octx = off.getContext('2d');
+          if (octx) {
+            octx.drawImage(img, 0, 0);
+            const data = octx.getImageData(0, 0, w, h).data;
+            let minX = w, minY = h, maxX = -1, maxY = -1;
+            for (let y = 0; y < h; y++) {
+              for (let x = 0; x < w; x++) {
+                const a = data[(y * w + x) * 4 + 3];
+                if (a > 8) { // alpha threshold
+                  if (x < minX) minX = x;
+                  if (y < minY) minY = y;
+                  if (x > maxX) maxX = x;
+                  if (y > maxY) maxY = y;
+                }
+              }
+            }
+            const crop = (maxX >= minX && maxY >= minY)
+              ? { x: minX, y: minY, w: (maxX - minX + 1), h: (maxY - minY + 1) }
+              : { x: 0, y: 0, w, h };
+            imgs[key] = { img, crop };
+          } else {
+            imgs[key] = { img, crop: { x: 0, y: 0, w, h } } as any;
+          }
+        } catch {
+          imgs[key] = { img, crop: { x: 0, y: 0, w: img.naturalWidth, h: img.naturalHeight } } as any;
+        }
+        remaining--;
+        if (remaining === 0) imagesRef.current = imgs;
+      };
+      img.onerror = () => {
+        remaining--;
+        if (remaining === 0) imagesRef.current = imgs;
+      };
+    });
+  }, [props.types, props.theme]);
 
   // Expose reset API to parent
   useImperativeHandle(ref, () => ({
@@ -93,9 +175,36 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
         const x = baseX + i * (slotW + pad);
         ctx.fillStyle = "#3d3d3d";
         ctx.fillRect(x - 6, 6, slotW + 12, TRAY_H - 12);
-        // Draw polygon preview
+        // Draw sprite preview proportional to target draw dims
         ctx.save();
         ctx.translate(x + slotW / 2, y + 26);
+        const sprite = t.sprite ?? "rock";
+        const size = t.size ?? "small";
+        const theme = (props.theme && props.theme !== "mixed") ? props.theme : "daytime";
+        const key = `${theme}_${sprite}_${size}`;
+        const entry = imagesRef.current[key];
+        if (entry) {
+          const img = entry.img;
+          const aw = Math.max(...t.anchors.map(a => a.x)) - Math.min(...t.anchors.map(a => a.x));
+          const ah = Math.max(...t.anchors.map(a => a.y)) - Math.min(...t.anchors.map(a => a.y));
+          const srcW = t.crop?.w ?? entry.crop.w;
+          const srcH = t.crop?.h ?? entry.crop.h;
+          // Base scale to fit within anchor bounds in the tray
+          let scale = Math.min(aw / srcW, ah / srcH) * TRAY_OVERSCAN;
+          // Nudge down large rectangle rock so it fits comfortably in the tray
+          if (sprite === "rock" && size === "large") {
+            scale *= 0.8;
+          }
+          // Make all small-sized rocks appear smaller in the tray
+          if (size === "small") {
+            scale *= 0.8;
+          }
+          const w = srcW * scale;
+          const h = srcH * scale;
+          const sx = t.crop?.x ?? entry.crop.x;
+          const sy = t.crop?.y ?? entry.crop.y;
+          ctx.drawImage(img, sx, sy, srcW, srcH, -w / 2, -h / 2, w, h);
+        } else {
         ctx.fillStyle = "#cfe8ff";
         ctx.beginPath();
         t.anchors.forEach((p, idx) => {
@@ -104,6 +213,7 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
         });
         ctx.closePath();
         ctx.fill();
+        }
         ctx.restore();
         ctx.fillStyle = "#fff";
         // Removed rock name label
@@ -135,6 +245,26 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
         ctx.save();
         ctx.translate(r.position.x, r.position.y);
         ctx.rotate((r.displayRotation * Math.PI) / 180);
+        const type = types.find(t => t.id === r.typeId);
+        const sprite = type?.sprite ?? "rock";
+        const size = type?.size ?? "small";
+        const effectiveTheme = r.variantTheme ?? (props.theme === "mixed" ? "daytime" : (props.theme ?? "daytime"));
+        const key = `${effectiveTheme}_${sprite}_${size}`;
+        const entry = imagesRef.current[key];
+        if (entry) {
+          const img = entry.img;
+          const aw = Math.max(...r.anchors.map(a => a.x)) - Math.min(...r.anchors.map(a => a.x));
+          const ah = Math.max(...r.anchors.map(a => a.y)) - Math.min(...r.anchors.map(a => a.y));
+          const srcW = type?.crop?.w ?? entry.crop.w;
+          const srcH = type?.crop?.h ?? entry.crop.h;
+          const scale = Math.min(aw / srcW, ah / srcH) * SPRITE_OVERSCAN;
+          const w = srcW * scale;
+          const h = srcH * scale;
+          const sx = type?.crop?.x ?? entry.crop.x;
+          const sy = type?.crop?.y ?? entry.crop.y;
+          ctx.drawImage(img, sx, sy, srcW, srcH, -w / 2, -h / 2, w, h);
+        } else {
+          // fallback to polygon fill
         ctx.fillStyle = "#ffd27f";
         ctx.beginPath();
         r.anchors.forEach((p, idx) => {
@@ -143,6 +273,7 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
         });
         ctx.closePath();
         ctx.fill();
+        }
         ctx.restore();
       }
 
@@ -151,7 +282,26 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
         ctx.save();
         ctx.translate(r.position.x, r.position.y);
         ctx.rotate((r.displayRotation * Math.PI) / 180);
-        ctx.globalAlpha = 0.9;
+        ctx.globalAlpha = 0.95;
+        const type = types.find(t => t.id === r.typeId) as any;
+        const sprite = type?.sprite ?? "rock";
+        const size = type?.size ?? "small";
+        const effectiveTheme = r.variantTheme ?? (props.theme === "mixed" ? "daytime" : (props.theme ?? "daytime"));
+        const key = `${effectiveTheme}_${sprite}_${size}`;
+        const entry = imagesRef.current[key];
+        if (entry) {
+          const img = entry.img;
+          const aw = Math.max(...r.anchors.map(a => a.x)) - Math.min(...r.anchors.map(a => a.x));
+          const ah = Math.max(...r.anchors.map(a => a.y)) - Math.min(...r.anchors.map(a => a.y));
+          const srcW = type?.crop?.w ?? entry.crop.w;
+          const srcH = type?.crop?.h ?? entry.crop.h;
+          const scale = Math.min(aw / srcW, ah / srcH) * SPRITE_OVERSCAN;
+          const w = srcW * scale;
+          const h = srcH * scale;
+          const sx = type?.crop?.x ?? entry.crop.x;
+          const sy = type?.crop?.y ?? entry.crop.y;
+          ctx.drawImage(img, sx, sy, srcW, srcH, -w / 2, -h / 2, w, h);
+        } else {
         ctx.fillStyle = "#ffe5a3";
         ctx.beginPath();
         r.anchors.forEach((p, idx) => {
@@ -160,6 +310,7 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
         });
         ctx.closePath();
         ctx.fill();
+        }
         ctx.globalAlpha = 1;
         ctx.restore();
       }
@@ -235,12 +386,67 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
       dragging: true,
       targetRotation: 0,
       displayRotation: 0,
+      variantTheme: props.theme === "mixed" ? (Math.random() < 0.5 ? "daytime" : "sunset") : undefined,
     };
   }
 
   function screenToCanvasPos(canvas: HTMLCanvasElement, clientX: number, clientY: number) {
     const r = canvas.getBoundingClientRect();
     return { x: clientX - r.left, y: clientY - r.top };
+    }
+
+  // Find supports directly under a rock among the given candidates using
+  // vertical adjacency and horizontal overlap (aligned with physics heuristics)
+  function findDirectSupports(top: RockInstance, candidates: RockInstance[]): RockInstance[] {
+    const topPts = toWorldPoly(top);
+    const rBottom = Math.max(...topPts.map(p => p.y));
+    const rMinX = Math.min(...topPts.map(p => p.x));
+    const rMaxX = Math.max(...topPts.map(p => p.x));
+    const CONTACT_Y_EPS = 2.0;
+    const supports: RockInstance[] = [];
+    for (const s of candidates) {
+      if (s === top) continue;
+      const sPts = toWorldPoly(s);
+      const sTop = Math.min(...sPts.map(p => p.y));
+      const sMinX = Math.min(...sPts.map(p => p.x));
+      const sMaxX = Math.max(...sPts.map(p => p.x));
+      const horizOverlap = !(rMinX > sMaxX || rMaxX < sMinX);
+      const verticalAdj = Math.abs(sTop - rBottom) <= CONTACT_Y_EPS;
+      if (horizOverlap && verticalAdj) supports.push(s);
+    }
+    return supports;
+  }
+
+  // When a settled rock is picked up, re-evaluate rocks above it and unsettle
+  // any that are no longer stable given remaining supports. Propagate upward.
+  function cascadeUnsettle(dragged: RockInstance) {
+    const settled = rocks.filter(r => r.isStatic && r !== dragged && !r.dragging);
+    const queue: RockInstance[] = [];
+    // Seed with rocks that directly relied on the dragged rock
+    for (const r of settled) {
+      const supports = findDirectSupports(r, settled.concat(dragged));
+      if (supports.includes(dragged)) queue.push(r);
+    }
+
+    const visited = new Set<string>();
+    while (queue.length > 0) {
+      const r = queue.shift()!;
+      if (visited.has(r.id)) continue;
+      visited.add(r.id);
+
+      const currentSettled = rocks.filter(x => x.isStatic && x !== dragged && x !== r && !x.dragging);
+      const supports = findDirectSupports(r, currentSettled);
+      const stillStable = supports.length > 0 && stableOnMultiple(r, supports, { tolerancePx: 0 });
+      if (!stillStable) {
+        r.isStatic = false;
+        r.velocity = r.velocity || { x: 0, y: 0 };
+        // Any rocks that directly rely on r should be reconsidered
+        for (const up of currentSettled) {
+          const sup = findDirectSupports(up, currentSettled.concat(r));
+          if (sup.includes(r)) queue.push(up);
+        }
+      }
+    }
     }
 
   useEffect(() => {
@@ -272,11 +478,17 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
         );
       });
       if (pick) {
+        const wasStatic = !!pick.isStatic;
         pick.dragging = true;
         dragRef.current.rock = pick;
         dragRef.current.offX = pos.x - pick.position.x;
         dragRef.current.offY = pos.y - pick.position.y;
         dragRef.current.secondFingerDown = touchCount >= 2;
+        if (wasStatic) {
+          // Remove as support and trigger cascade re-evaluation
+          pick.isStatic = false;
+          cascadeUnsettle(pick);
+        }
       }
     };
 

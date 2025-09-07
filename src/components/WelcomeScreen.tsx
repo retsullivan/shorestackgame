@@ -20,19 +20,19 @@ export function WelcomeScreen({ onNavigate }: WelcomeScreenProps) {
       <div className="relative z-10 text-center max-w-2xl">
         {/* Game Title */}
         <h1 className="pixel-font text-2xl md:text-4xl lg:text-6xl text-beach-foam mb-3 md:mb-4 drop-shadow-lg">
-          Rox Stax
+          SHORE STACK
         </h1>
         <h2 className="pixel-font text-md lg:text-xl text-beach-foam mb-6 md:mb-8 drop-shadow-md">
-          BEACH ADVENTURE
+          A COZY BEACH ADVENTURE
         </h2>
         
         {/* Subtitle */}
-        <p className="pixel-font text-xs md:text-sm text-beach-foam mb-8 md:mb-12 opacity-90 max-w-xs md:max-w-md mx-auto px-4">
+        {/*<p className="pixel-font text-xs md:text-sm text-beach-foam mb-8 md:mb-12 opacity-90 max-w-xs md:max-w-md mx-auto px-4">
           Help cute sea creatures build magnificent rock towers on the Pacific coast!
-        </p>
+        </p> */}
         
         {/* Menu Buttons */}
-        <div className="flex flex-col space-y-3 md:space-y-4 mb-6 md:mb-8 px-4 justify-center items-center">
+        <div className="flex flex-col space-y-3 md:space-y-4 mt-6 md:mt-8 mb-6 md:mb-8 px-4 justify-center items-center">
           <Button
             onClick={() => onNavigate('levels')}
             className="retro-button pixel-font text-beach-foam w-full max-w-xs md:max-w-64 h-12 md:h-14 text-xs md:text-sm"

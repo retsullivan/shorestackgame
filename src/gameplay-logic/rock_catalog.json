@@ -1,99 +1,95 @@
 {
-  "quad_square_small": {
+  "rock_small": {
     "anchors": [
-      { "x": -16, "y": -16 },
-      { "x": 16, "y": -16 },
-      { "x": 16, "y": 16 },
-      { "x": -16, "y": 16 }
-    ],
-    "drawW": 32,
-    "drawH": 32
-  },
-  "quad_rect_large": {
-    "anchors": [
-      { "x": -28, "y": -16 },
-      { "x": 28, "y": -16 },
-      { "x": 28, "y": 16 },
-      { "x": -28, "y": 16 }
-    ],
-    "drawW": 56,
-    "drawH": 32
-  },
-  "quad_trapezoid_small": {
-    "anchors": [
-      { "x": -24, "y": -12 },
-      { "x": 24, "y": -12 },
-      { "x": 16, "y": 12 },
-      { "x": -16, "y": 12 }
-    ],
-    "drawW": 48,
-    "drawH": 24
-  },
-  "tri_right_small": {
-    "anchors": [
-      { "x": -20, "y": 16 },
-      { "x": 20, "y": 16 },
-      { "x": 20, "y": -16 }
-    ],
-    "drawW": 40,
-    "drawH": 32
-  },
-  "tri_iso_medium": {
-    "anchors": [
-      { "x": -22, "y": 16 },
-      { "x": 22, "y": 16 },
-      { "x": 0, "y": -18 }
-    ],
-    "drawW": 44,
-    "drawH": 34
-  },
-  "l2_quad_wide_medium": {
-    "anchors": [
-      { "x": -32, "y": -14 },
-      { "x": 32, "y": -14 },
-      { "x": 32, "y": 14 },
-      { "x": -32, "y": 14 }
+      { "x": -32, "y": -32 },
+      { "x": 32, "y": -32 },
+      { "x": 32, "y": 32 },
+      { "x": -32, "y": 32 }
     ],
     "drawW": 64,
-    "drawH": 28
+    "drawH": 64,
+    "sprite": "rock",
+    "size": "small"
   },
-  "l2_quad_square_large": {
+  "rock_large": {
     "anchors": [
-      { "x": -24, "y": -24 },
-      { "x": 24, "y": -24 },
-      { "x": 24, "y": 24 },
-      { "x": -24, "y": 24 }
+      { "x": -48, "y": -48 },
+      { "x": 48, "y": -48 },
+      { "x": 48, "y": 48 },
+      { "x": -48, "y": 48 }
     ],
-    "drawW": 48,
-    "drawH": 48
+    "drawW": 96,
+    "drawH": 96,
+    "sprite": "rock",
+    "size": "large"
   },
-  "l2_quad_para_small": {
+  "trapezoid_small": {
     "anchors": [
-      { "x": -20, "y": -14 },
-      { "x": 22, "y": -14 },
-      { "x": 20, "y": 14 },
-      { "x": -22, "y": 14 }
+      { "x": -32, "y": -26 },
+      { "x": 32, "y": -26 },
+      { "x": 20, "y": 26 },
+      { "x": -20, "y": 26 }
     ],
-    "drawW": 44,
-    "drawH": 28
+    "drawW": 64,
+    "drawH": 64,
+    "sprite": "trapezoid",
+    "size": "small"
   },
-  "l2_tri_acute_small": {
+  "trapezoid_large": {
     "anchors": [
-      { "x": -18, "y": 16 },
-      { "x": 18, "y": 16 },
-      { "x": -4, "y": -16 }
+      { "x": -48, "y": -39 },
+      { "x": 48, "y": -39 },
+      { "x": 30, "y": 39 },
+      { "x": -30, "y": 39 }
     ],
-    "drawW": 36,
-    "drawH": 32
+    "drawW": 96,
+    "drawH": 96,
+    "sprite": "trapezoid",
+    "size": "large"
   },
-  "l2_tri_right_medium": {
+  "triangle_small": {
     "anchors": [
-      { "x": -24, "y": 20 },
-      { "x": 24, "y": 20 },
-      { "x": 24, "y": -20 }
+      { "x": -32, "y": 32 },
+      { "x": 32, "y": 32 },
+      { "x": 32, "y": -32 }
     ],
-    "drawW": 48,
-    "drawH": 40
+    "drawW": 64,
+    "drawH": 64,
+    "sprite": "triangle",
+    "size": "small"
+  },
+  "triangle_large": {
+    "anchors": [
+      { "x": -48, "y": 48 },
+      { "x": 48, "y": 48 },
+      { "x": 48, "y": -48 }
+    ],
+    "drawW": 96,
+    "drawH": 96,
+    "sprite": "triangle",
+    "size": "large"
+  },
+  "isoceles_small": {
+    "anchors": [
+      { "x": -32, "y": 32 },
+      { "x": 32, "y": 32 },
+      { "x": 0, "y": -32 }
+    ],
+    "drawW": 64,
+    "drawH": 64,
+    "sprite": "isoceles",
+    "size": "small"
+  },
+  "isoceles_large": {
+    "anchors": [
+      { "x": -48, "y": 48 },
+      { "x": 48, "y": 48 },
+      { "x": 0, "y": -48 }
+    ],
+    "drawW": 96,
+    "drawH": 96,
+    "sprite": "isoceles",
+    "size": "large"
   }
 }
 
