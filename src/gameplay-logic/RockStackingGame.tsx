@@ -40,8 +40,10 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
   // Eagerly import all sprite URLs at build time
   const spriteUrlMap = (import.meta as any).glob("../assets/rock_art/**/**.png", { eager: true, as: "url" }) as Record<string, string>;
   // Slight visual overscan so bitmaps appear to touch despite transparent borders
-  const SPRITE_OVERSCAN = 1.05; // world draw
-  const TRAY_OVERSCAN = 1.02;   // tray preview
+  // Increase and add a tiny render-only downward nudge for tighter stacks
+  const SPRITE_OVERSCAN = 1.3; // world draw
+  const TRAY_OVERSCAN = 1.04;   // tray preview
+  const VISUAL_STACK_NUDGE_Y = 1.5; // px, render-only shift downward
   const dragRef = useRef<{ rock: RockInstance | null; offX: number; offY: number; secondFingerDown: boolean }>(
     { rock: null, offX: 0, offY: 0, secondFingerDown: false }
   );
@@ -193,7 +195,7 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
           let scale = Math.min(aw / srcW, ah / srcH) * TRAY_OVERSCAN;
           // Nudge down large rectangle rock so it fits comfortably in the tray
           if (sprite === "rock" && size === "large") {
-            scale *= 0.8;
+            scale *= 0.75;
           }
           // Make all small-sized rocks appear smaller in the tray
           if (size === "small") {
@@ -243,7 +245,9 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
     function drawRocks() {
       for (const r of rocks) {
         ctx.save();
-        ctx.translate(r.position.x, r.position.y);
+        // Apply full nudge for settled rocks; halve it while dragging for clarity
+        const nudge = r.isStatic ? VISUAL_STACK_NUDGE_Y : VISUAL_STACK_NUDGE_Y * 0.5;
+        ctx.translate(r.position.x, r.position.y + nudge);
         ctx.rotate((r.displayRotation * Math.PI) / 180);
         const type = types.find(t => t.id === r.typeId);
         const sprite = type?.sprite ?? "rock";
@@ -280,7 +284,7 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
       if (dragRef.current.rock) {
         const r = dragRef.current.rock;
         ctx.save();
-        ctx.translate(r.position.x, r.position.y);
+        ctx.translate(r.position.x, r.position.y + VISUAL_STACK_NUDGE_Y * 0.5);
         ctx.rotate((r.displayRotation * Math.PI) / 180);
         ctx.globalAlpha = 0.95;
         const type = types.find(t => t.id === r.typeId) as any;

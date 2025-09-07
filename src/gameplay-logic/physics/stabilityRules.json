@@ -1,21 +1,30 @@
 {
   "easy": {
-    "minOverlapRatio": 0.25,
+    "minOverlapRatio": 0.2,
     "allowRectOnTriangle": true,
-    "triangleTipTolerance": 0.5,
-    "requireFlatSupportForTip": false
+    "triangleTipTolerance": 0.6,
+    "requireFlatSupportForTip": false,
+    "settleContacts": 2,
+    "tumbleContacts": 1,
+    "groundSettleContacts": 3
   },
   "medium": {
-    "minOverlapRatio": 0.5,
+    "minOverlapRatio": 0.45,
     "allowRectOnTriangle": true,
-    "triangleTipTolerance": 0.25,
-    "requireFlatSupportForTip": true
+    "triangleTipTolerance": 0.3,
+    "requireFlatSupportForTip": true,
+    "settleContacts": 2,
+    "tumbleContacts": 1,
+    "groundSettleContacts": 3
   },
   "hard": {
-    "minOverlapRatio": 0.75,
+    "minOverlapRatio": 0.7,
     "allowRectOnTriangle": false,
-    "triangleTipTolerance": 0.1,
-    "requireFlatSupportForTip": true
+    "triangleTipTolerance": 0.15,
+    "requireFlatSupportForTip": true,
+    "settleContacts": 2,
+    "tumbleContacts": 1,
+    "groundSettleContacts": 3
   }
 }
 
