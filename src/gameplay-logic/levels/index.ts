@@ -1,7 +1,7 @@
 import { LevelData, LevelJson, RockCatalog, RockType } from "./types";
 import level1 from "./level1.json";
 import level2 from "./level2.json";
-import catalog from "../rocks/catalog.json";
+import catalog from "../rock_catalog.json";
 
 function buildTypes(level: LevelJson, cat: RockCatalog): RockType[] {
   return level.rocks
