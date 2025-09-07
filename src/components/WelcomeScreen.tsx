@@ -1,6 +1,7 @@
 import { Button } from "./ui/button";
 import { ScreenBorder } from "./ScreenBorder";
 import exampleImage from '../assets/sph_beach_night.jpg';
+import logoImage from '../assets/shorestack_logo_large.png';
 
 interface WelcomeScreenProps {
   onNavigate: (screen: string) => void;
@@ -18,10 +19,10 @@ export function WelcomeScreen({ onNavigate }: WelcomeScreenProps) {
       
       
       <div className="relative z-10 text-center max-w-2xl">
-        {/* Game Title */}
-        <h1 className="pixel-font text-2xl md:text-4xl lg:text-6xl text-beach-foam mb-3 md:mb-4 drop-shadow-lg">
-          SHORE STACK
-        </h1>
+        {/* Game Title (Logo) */}
+        <div className="flex justify-center mb-3 md:mb-4">
+          <img src={logoImage} alt="Shore Stack logo" className="w-48 md:w-72 lg:w-96 drop-shadow-lg" />
+        </div>
         <h2 className="pixel-font text-md lg:text-xl text-beach-foam mb-6 md:mb-8 drop-shadow-md">
           A COZY BEACH ADVENTURE
         </h2>
