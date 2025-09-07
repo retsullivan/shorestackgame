@@ -1,16 +1,31 @@
-import { LevelData } from "./types";
-import { level1Rocks } from "./level1";
-import { level2Rocks } from "./level2";
+import { LevelData, LevelJson, RockCatalog, RockType } from "./types";
+import level1 from "./level1.json";
+import level2 from "./level2.json";
+import catalog from "../rocks/catalog.json";
+
+function buildTypes(level: LevelJson, cat: RockCatalog): RockType[] {
+  return level.rocks
+    .map(({ id, count }) => {
+      const entry = cat[id];
+      if (!entry) return null;
+      return { id, anchors: entry.anchors, drawW: entry.drawW, drawH: entry.drawH, count } as RockType;
+    })
+    .filter((x): x is RockType => !!x);
+}
 
 export function getLevelData(id: number): LevelData {
-  switch (id) {
-    case 1:
-      return { id: 1, name: "TIDE POOLS", rocks: level1Rocks, goal: "Build a stable stack with all 5 rocks" };
-    case 2:
-      return { id: 2, name: "CORAL COVE", rocks: level2Rocks, goal: "Reach medium height using at least one triangle" };
-    default:
-      return { id, name: `LEVEL ${id}`, rocks: level1Rocks, goal: "Build a stable stack" };
-  }
+  const lvls: Record<number, LevelJson> = {
+    1: level1 as LevelJson,
+    2: level2 as LevelJson,
+  };
+  const lvl = lvls[id] ?? (level1 as LevelJson);
+  const types = buildTypes(lvl, catalog as RockCatalog);
+  return {
+    id: lvl.id,
+    name: lvl.name,
+    goal: lvl.goal,
+    types,
+  };
 }
 
 

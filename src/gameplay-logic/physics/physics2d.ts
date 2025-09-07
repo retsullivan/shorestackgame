@@ -17,6 +17,8 @@ export interface RockPoly {
   // Lightweight physics state (optional)
   velocity?: { x: number; y: number };
   isStatic?: boolean;
+  isTipping?: boolean;
+  tipCooldown?: number; // frames to wait before allowing another tip
 }
 
 export function rotatePoint90(p: Point, rot: Rotation): Point {
@@ -250,10 +252,14 @@ export function stableOnMultiple(top: RockPoly, supports: RockPoly[], options?: 
  * Animate a tipping rock around the given pivot point (world coords).
  * After tipping, slide it off to the floor.
  */
-function tipAndFall(rock: RockPoly, pivot: Point) {
+function tipAndFall(rock: RockPoly, pivot: Point, groundY?: number) {
   // current logical rotation in degrees
   const startRot = rock.rotation;
-  const dir = Math.sign((rock.position.x) - pivot.x) || 1; // tip direction away from pivot
+  // choose tip direction away from pivot, biased by centroid
+  const centroid = getWeightedCentroid(
+    toWorldPoly(rock).map((p, i) => ({ ...p, weight: rock.anchors[i]?.weight ?? 1 }))
+  );
+  const dir = Math.sign(centroid.x - pivot.x) || 1; // tip direction away from pivot
   const spinDeg = dir > 0 ? TIP_ROT_DEG : -TIP_ROT_DEG;
 
   // compute rock-local pivot (vector from rock.position to pivot)
@@ -264,6 +270,7 @@ function tipAndFall(rock: RockPoly, pivot: Point) {
 
   // Freeze physics during animation
   rock.isStatic = true;
+  rock.isTipping = true;
 
   // animate displayRotation (for rendering) and update position each tick to keep pivot fixed
   const anim = { t: 0 }; // 0 -> 1 tween parameter
@@ -288,13 +295,26 @@ function tipAndFall(rock: RockPoly, pivot: Point) {
       }
     },
     onComplete: () => {
-      // Snap logical rotation and hand control back to physics loop with a shove
+      // Snap logical rotation and finalize placement
       const snapped = (((startRot + spinDeg) % 360 + 360) % 360) as Rotation;
       rock.rotation = snapped;
       if ((rock as any).targetRotation !== undefined) (rock as any).targetRotation = snapped;
       if ((rock as any).displayRotation !== undefined) (rock as any).displayRotation = snapped;
-      // Resume dynamics so updatePhysics can clamp to ground and roll
+      // If tipping onto ground, snap to ground with two-vertex contact and settle
+      if (groundY !== undefined) {
+        const pts = toWorldPoly(rock);
+        const maxY = Math.max(...pts.map(p => p.y));
+        const dy = groundY - maxY;
+        rock.position.y += dy;
+        rock.velocity = { x: 0, y: 0 };
+        rock.isStatic = true;
+        rock.isTipping = false;
+        wobbleSettle(rock);
+        return;
+      }
+      // Otherwise resume dynamics so updatePhysics can handle rolling/falling
       rock.isStatic = false;
+      rock.isTipping = false;
       rock.velocity = { x: dir * 1.2, y: 1.0 };
     }
   });
@@ -310,6 +330,82 @@ const MAX_BACKTRACK_PIXELS = 64; // how far we'll step back to resolve penetrati
 const BACKTRACK_STEP = 1;        // pixel step size when resolving overlap
 const CONTACT_Y_EPS = 1.5;       // tolerance when deciding top/bottom contact alignment
 const TIP_ROT_DEG = 90;         // degrees to rotate when tipping
+const WOBBLE_DEG = 4;           // small settle wobble rotation in degrees
+const WOBBLE_PIX = 3;           // small settle bounce in px
+const CONTACT_DIST_EPS = 2.0;   // distance tolerance for vertex-to-edge contacts
+
+function wobbleSettle(rock: RockPoly) {
+  const hasDisplay = (rock as any).displayRotation !== undefined;
+  const baseRot = rock.rotation;
+  if (hasDisplay) {
+    if ((rock as any).displayRotation === undefined) (rock as any).displayRotation = baseRot;
+    const dir = Math.random() < 0.5 ? -1 : 1;
+    const target1 = baseRot + dir * WOBBLE_DEG;
+    const target2 = baseRot - dir * (WOBBLE_DEG * 0.6);
+    const tl = gsap.timeline();
+    tl.to(rock as any, { displayRotation: target1, duration: 0.12, ease: "power2.out" }, 0);
+    tl.to(rock as any, { displayRotation: target2, duration: 0.1, ease: "power2.inOut" }, ">");
+    tl.to(rock as any, { displayRotation: baseRot, duration: 0.12, ease: "power2.out" }, ">");
+  }
+  gsap.to(rock.position, { y: rock.position.y + WOBBLE_PIX, duration: 0.1, ease: "power1.out", yoyo: true, repeat: 1 });
+}
+
+// Distance from point to segment
+function distPointToSeg(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
+  const abx = bx - ax;
+  const aby = by - ay;
+  const apx = px - ax;
+  const apy = py - ay;
+  const abLenSq = abx * abx + aby * aby;
+  if (abLenSq === 0) return Math.hypot(apx, apy);
+  let t = (apx * abx + apy * aby) / abLenSq;
+  t = Math.max(0, Math.min(1, t));
+  const cx = ax + t * abx;
+  const cy = ay + t * aby;
+  return Math.hypot(px - cx, py - cy);
+}
+
+// reserved helper for future: bottom band segment extraction (unused for now)
+
+// Count how many vertices of the rock are in contact with the ground line
+function countGroundContacts(rock: RockPoly, groundY: number): number {
+  const pts = toWorldPoly(rock);
+  let count = 0;
+  for (const p of pts) {
+    if (Math.abs(p.y - groundY) <= CONTACT_Y_EPS) count++;
+  }
+  return count;
+}
+
+// Count distinct rock vertices contacting the top bands of any supports
+function countSupportContacts(rock: RockPoly, supports: RockPoly[]): number {
+  const rockPts = toWorldPoly(rock);
+  const seen = new Set<number>();
+  let count = 0;
+  for (let i = 0; i < rockPts.length; i++) {
+    const rp = rockPts[i];
+    for (const s of supports) {
+      const sPts = toWorldPoly(s);
+      // vertex-on-top-band
+      const supTop = Math.min(...sPts.map(p => p.y));
+      const band = sPts.filter(p => Math.abs(p.y - supTop) <= 4);
+      if (band.length > 0) {
+        const minX = Math.min(...band.map(p => p.x));
+        const maxX = Math.max(...band.map(p => p.x));
+        const onTop = Math.abs(rp.y - supTop) <= CONTACT_Y_EPS && rp.x >= minX && rp.x <= maxX;
+        if (onTop && !seen.has(i)) { seen.add(i); count++; continue; }
+      }
+      // vertex-to-edge within distance tolerance (edge can be anywhere on support)
+      for (let e = 0; e < sPts.length; e++) {
+        const a = sPts[e];
+        const b = sPts[(e + 1) % sPts.length];
+        const d = distPointToSeg(rp.x, rp.y, a.x, a.y, b.x, b.y);
+        if (d <= CONTACT_DIST_EPS && !seen.has(i)) { seen.add(i); count++; break; }
+      }
+    }
+  }
+  return count;
+}
 
 export function updatePhysics(
   rock: RockPoly,
@@ -318,6 +414,7 @@ export function updatePhysics(
 ): void {
   if (rock.isStatic) return;
   if (!rock.velocity) rock.velocity = { x: 0, y: 0 };
+  if (rock.tipCooldown && rock.tipCooldown > 0) rock.tipCooldown--;
 
   // apply gravity
   rock.velocity.y += GRAVITY_PX * TIME_STEP;
@@ -344,20 +441,47 @@ export function updatePhysics(
     const correction = groundY - low;
     rock.position.y += correction;
 
-    // Rolling behavior on ground: if overlapping any settled rocks at ground, nudge sideways
-    const overlapAtGround = settled.some(s => polygonsIntersectSAT(toWorldPoly(rock), toWorldPoly(s)));
-    if (overlapAtGround) {
-      // apply sideways roll with friction
-      rock.isStatic = false;
-      const dir = Math.random() < 0.5 ? -1 : 1;
-      rock.velocity.x = (rock.velocity.x ?? 0) * FRICTION + dir * 1.2;
-      rock.velocity.y = 0; // stay grounded; next frame will keep clamping
+    // Evaluate contacts against ground and any supports directly under the rock
+    const groundContacts = countGroundContacts(rock, groundY);
+    const supportsUnder = settled.filter(s => {
+      const sTop = Math.min(...toWorldPoly(s).map(p => p.y));
+      const rBottom = Math.max(...toWorldPoly(rock).map(p => p.y));
+      const sp = toWorldPoly(s);
+      const minX = Math.min(...sp.map(p => p.x));
+      const maxX = Math.max(...sp.map(p => p.x));
+      const rp = toWorldPoly(rock);
+      const rminX = Math.min(...rp.map(p => p.x));
+      const rmaxX = Math.max(...rp.map(p => p.x));
+      const horiz = !(rminX > maxX || rmaxX < minX);
+      return horiz && Math.abs(sTop - rBottom) <= CONTACT_Y_EPS;
+    });
+    const supportContacts = countSupportContacts(rock, supportsUnder);
+    const totalContacts = groundContacts + supportContacts;
+
+    // Triangle single-point contact tipping: only if total contacts are exactly 1, not moving fast, and cooldown passed
+    const isTriangle = rock.anchors.length === 3;
+    const slow = Math.abs(rock.velocity.x) < 0.2 && Math.abs(rock.velocity.y) < 0.2;
+    if (isTriangle && totalContacts === 1 && !rock.isTipping && (!rock.tipCooldown || rock.tipCooldown <= 0) && slow) {
+      const rpts = toWorldPoly(rock);
+      const lowest = rpts.reduce((a, b) => (a.y > b.y ? a : b));
+      tipAndFall(rock, lowest, groundY);
+      rock.tipCooldown = 30; // ~0.5s at 60fps
       return;
     }
 
-    // If not overlapping anything, settle on the ground
-    rock.velocity = { x: 0, y: 0 };
-    rock.isStatic = true;
+    if (totalContacts >= 2) {
+      rock.velocity = { x: 0, y: 0 };
+      rock.isStatic = true;
+      recheckPile([...settled, rock]);
+      wobbleSettle(rock);
+      return;
+    }
+
+    // Otherwise keep rolling along the ground
+    rock.isStatic = false;
+    const dir = Math.random() < 0.5 ? -1 : 1;
+    rock.velocity.x = (rock.velocity.x ?? 0) * FRICTION + dir * 1.2;
+    rock.velocity.y = 0; // stay grounded; next frame will keep clamping
     return;
   }
 
@@ -394,13 +518,15 @@ export function updatePhysics(
       return;
     }
 
-    // If we have supports directly under the rock, test stability.
+    // If we have supports directly under the rock, test stability and contact count.
+    const contacts = countSupportContacts(rock, touching);
     const stable = stableOnMultiple(rock, touching, { tolerancePx: 0 });
-    if (stable) {
-      // settle here
+    if (stable || contacts >= 2) {
+      // settle here (allow angled rests if two or more contact points)
       rock.velocity = { x: 0, y: 0 };
       rock.isStatic = true;
       recheckPile([...settled, rock]);
+      wobbleSettle(rock);
       return;
     } else {
       // Unstable: trigger tip animation around suitable pivot

@@ -1,0 +1,14 @@
+{
+  "id": 2,
+  "name": "CORAL COVE",
+  "goal": "Reach medium height using at least one triangle",
+  "rocks": [
+    { "id": "l2_quad_square_large", "count": 3 },
+    { "id": "l2_quad_wide_medium", "count": 4 },
+    { "id": "l2_quad_para_small", "count": 3 },
+    { "id": "l2_tri_right_medium", "count": 2 },
+    { "id": "l2_tri_acute_small", "count": 2 }
+  ]
+}
+
+

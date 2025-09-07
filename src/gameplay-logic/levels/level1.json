@@ -1,0 +1,14 @@
+{
+  "id": 1,
+  "name": "TIDE POOLS",
+  "goal": "Build a stable stack with all 5 rocks",
+  "rocks": [
+    { "id": "quad_rect_large", "count": 4 },
+    { "id": "quad_square_small", "count": 6 },
+    { "id": "quad_trapezoid_small", "count": 2 },
+    { "id": "tri_right_small", "count": 2 },
+    { "id": "tri_iso_medium", "count": 5 }
+  ]
+}
+
+

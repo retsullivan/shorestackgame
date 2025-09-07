@@ -2,18 +2,10 @@ import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "re
 // gsap no longer used for discrete landings; physics loop animates via position updates
 import {
   Rotation,
-  AnchorPoint,
   RockPoly,
   updatePhysics,
 } from "./physics/physics2d";
-
-interface RockType {
-  id: string;
-  anchors: AnchorPoint[];
-  count: number;
-  drawW: number;
-  drawH: number;
-}
+import { RockType } from "./levels/types";
 
 interface RockInstance extends RockPoly {
   typeId: string; // base rock type id for tray counts
@@ -27,51 +19,15 @@ interface RockInstance extends RockPoly {
 const TRAY_H = 100; // canvas tray inside gameplay area (keep for MVP)
 // (deprecated) post-landing tuning constants no longer used with physics loop
 
-function makeTypes(): RockType[] {
-  return [
-    {
-      id: "quad_square_small",
-      anchors: [
-        { x: -16, y: -16 },
-        { x: 16, y: -16 },
-        { x: 16, y: 16 },
-        { x: -16, y: 16 },
-      ],
-      count: 6,
-      drawW: 32,
-      drawH: 32,
-    },
-    {
-      id: "quad_rect_large",
-      anchors: [
-        { x: -28, y: -16 },
-        { x: 28, y: -16 },
-        { x: 28, y: 16 },
-        { x: -28, y: 16 },
-      ],
-      count: 4,
-      drawW: 56,
-      drawH: 32,
-    },
-    {
-      id: "tri_iso_medium",
-      anchors: [
-        { x: -22, y: 16 },
-        { x: 22, y: 16 },
-        { x: 0, y: -18 },
-      ],
-      count: 5,
-      drawW: 44,
-      drawH: 34,
-    },
-  ];
+export interface RockStackingGameProps {
+  types: RockType[];
 }
 
 export interface RockStackingGameHandle {
   reset: () => void;
 }
 
-const RockStackingGame = forwardRef<RockStackingGameHandle, {}>(function RockStackingGame(_props, ref) {
+const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProps>(function RockStackingGame(props, ref) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dimsRef = useRef<{ cssWidth: number; cssHeight: number; dpr: number }>({ cssWidth: 0, cssHeight: 0, dpr: 1 });
   const [types, setTypes] = useState<RockType[]>([]);
@@ -81,17 +37,17 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, {}>(function RockSta
   );
 
   useEffect(() => {
-    const t = makeTypes();
-    setTypes(t);
-  }, []);
+    // initialize tray types from props; deep copy counts so we can mutate locally
+    setTypes(props.types.map(t => ({ ...t, anchors: t.anchors.map(a => ({ ...a })) })));
+  }, [props.types]);
 
   // Expose reset API to parent
   useImperativeHandle(ref, () => ({
     reset() {
       setRocks([]);
-      setTypes(makeTypes());
+      setTypes(props.types.map(t => ({ ...t, anchors: t.anchors.map(a => ({ ...a })) })));
     },
-  }), []);
+  }), [props.types]);
 
   useEffect(() => {
     const canvas = canvasRef.current!;
