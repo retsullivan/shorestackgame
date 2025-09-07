@@ -104,24 +104,113 @@ export function pointInsidePolygon(point: Point, poly: Point[]): boolean {
 }
 
 export function stableOn(top: RockPoly, support: RockPoly, tolerancePx = 0): boolean {
+  // Compute centroid of the top rock in world coordinates
   const topWorld = toWorldPoly(top).map((p, i) => {
     const w = top.anchors[i]?.weight ?? 1;
     return { ...p, weight: w } as AnchorPoint;
   });
   const centroid = getWeightedCentroid(topWorld);
-  const supPoly = toWorldPoly(support);
-  if (pointInsidePolygon(centroid, supPoly)) return true;
-  if (tolerancePx <= 0) return false;
-  for (let i = 0; i < supPoly.length; i++) {
-    const a = supPoly[i];
-    const b = supPoly[(i + 1) % supPoly.length];
-    const abx = b.x - a.x, aby = b.y - a.y;
-    const apx = centroid.x - a.x, apy = centroid.y - a.y;
-    const abLenSq = abx * abx + aby * aby || 1;
-    const t = Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLenSq));
-    const cx = a.x + t * abx, cy = a.y + t * aby;
-    const dist = Math.hypot(centroid.x - cx, centroid.y - cy);
-    if (dist <= tolerancePx) return true;
+
+  // Determine the bottom contact span of the top rock (its lowest edge/points)
+  const eps = 2; // px tolerance when finding bottom edge
+  const topPoints = toWorldPoly(top);
+  const topBottomY = Math.max(...topPoints.map((p) => p.y));
+  const bottomEdgePoints = topPoints.filter((p) => p.y >= topBottomY - eps);
+  // If shape ends in a single point (e.g., triangle tip), width ~ 0
+  const topMinX = Math.min(...bottomEdgePoints.map((p) => p.x));
+  const topMaxX = Math.max(...bottomEdgePoints.map((p) => p.x));
+  const topBaseWidth = Math.max(0, topMaxX - topMinX);
+
+  // Approximate the support surface as its upper band
+  const supportWorld = toWorldPoly(support);
+  const supMinY = Math.min(...supportWorld.map((p) => p.y));
+  const bandHeight = 4; // stricter: thinner top surface band
+  const supportBandPoints = supportWorld.filter((p) => p.y <= supMinY + bandHeight);
+  if (supportBandPoints.length === 0) return false;
+  const supMinX = Math.min(...supportBandPoints.map((p) => p.x));
+  const supMaxX = Math.max(...supportBandPoints.map((p) => p.x));
+  const supBandWidth = Math.max(0, supMaxX - supMinX);
+
+  // Overlap span in X between top bottom edge and support surface band
+  const overlapMinX = Math.max(topMinX, supMinX);
+  const overlapMaxX = Math.min(topMaxX, supMaxX);
+  const overlapWidth = Math.max(0, overlapMaxX - overlapMinX);
+
+  // Minimum required overlap to consider balanced (prevents tip-on-point balancing)
+  // Disallow balancing on sharp points: require a meaningful support width
+  if (supBandWidth < 12) return false; // stricter: disallow very narrow supports
+
+  // Require substantial overlap relative to the narrower of the two bases
+  const minRequired = Math.max(18, Math.min(topBaseWidth, supBandWidth) * 0.8);
+
+  // Centroid projection must fall within the overlap span (with tolerance)
+  const centroidOverlaps = centroid.x >= overlapMinX && centroid.x <= overlapMaxX;
+
+  // Also require the bottom edge midpoint to lie over the overlap (prevents tip balancing)
+  const midX = (topMinX + topMaxX) * 0.5;
+  const midpointOverlaps = midX >= overlapMinX && midX <= overlapMaxX;
+  const aboveSurface = centroid.y <= (supMinY + bandHeight);
+  // Extra guard: if the centroid is substantially above the contact line but overlap is tiny, treat as unstable to avoid vertical sticking
+  if (overlapWidth < 12 && centroid.y < supMinY - 8) return false;
+
+  return overlapWidth >= minRequired && centroidOverlaps && midpointOverlaps && aboveSurface;
+}
+
+// Multi-support stability: allow a top rock to be supported by several neighbors
+export function stableOnMultiple(top: RockPoly, supports: RockPoly[], options?: { tolerancePx?: number }): boolean {
+  const tolerancePx = options?.tolerancePx ?? 0;
+
+  // Top rock bottom edge span
+  const eps = 2;
+  const topPts = toWorldPoly(top);
+  const topBottomY = Math.max(...topPts.map((p) => p.y));
+  const bottomEdgePts = topPts.filter((p) => p.y >= topBottomY - eps);
+  const topMinX = Math.min(...bottomEdgePts.map((p) => p.x));
+  const topMaxX = Math.max(...bottomEdgePts.map((p) => p.x));
+  const topBaseWidth = Math.max(0, topMaxX - topMinX);
+
+  // Build union of support top-band intervals
+  const bandHeight = 4;
+  const intervals: Array<{ l: number; r: number; w: number }> = [];
+  for (const s of supports) {
+    const pts = toWorldPoly(s);
+    const minY = Math.min(...pts.map((p) => p.y));
+    const band = pts.filter((p) => p.y <= minY + bandHeight);
+    if (band.length === 0) continue;
+    const l = Math.min(...band.map((p) => p.x));
+    const r = Math.max(...band.map((p) => p.x));
+    const w = Math.max(0, r - l);
+    if (w < 12) continue; // discard very narrow supports
+    intervals.push({ l, r, w });
+  }
+  if (intervals.length === 0) return false;
+  intervals.sort((a, b) => a.l - b.l);
+  const merged: Array<{ l: number; r: number }> = [];
+  for (const iv of intervals) {
+    if (merged.length === 0 || iv.l > merged[merged.length - 1].r) {
+      merged.push({ l: iv.l, r: iv.r });
+    } else {
+      merged[merged.length - 1].r = Math.max(merged[merged.length - 1].r, iv.r);
+    }
+  }
+
+  // Required overlap threshold (stricter)
+  const minRequired = Math.max(18, topBaseWidth * 0.8);
+  const centroid = getWeightedCentroid(
+    toWorldPoly(top).map((p, i) => ({ ...p, weight: top.anchors[i]?.weight ?? 1 }))
+  );
+  const midX = (topMinX + topMaxX) * 0.5;
+
+  // Check against any merged support interval
+  for (const m of merged) {
+    const overlapMin = Math.max(topMinX, m.l);
+    const overlapMax = Math.min(topMaxX, m.r);
+    const overlapW = Math.max(0, overlapMax - overlapMin);
+    const centroidOk = centroid.x >= overlapMin && centroid.x <= overlapMax;
+    const midpointOk = midX >= overlapMin && midX <= overlapMax;
+    if (overlapW >= minRequired && centroidOk && midpointOk) {
+      return true;
+    }
   }
   return false;
 }

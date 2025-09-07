@@ -3,9 +3,9 @@ import { Progress } from "./ui/progress";
 import { Pause, Target, Timer, Info } from "lucide-react";
 import { ScreenBorder } from "./ScreenBorder";
 import { Header } from "./Header";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { getLevelData } from "../gameplay-logic/levels";
-import RockStackingGame from "../gameplay-logic/RockStackingGame";
+import RockStackingGame, { RockStackingGameHandle } from "../gameplay-logic/RockStackingGame";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "./ui/hover-card";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { useIsMobile } from "./ui/use-mobile";
@@ -20,6 +20,7 @@ export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
   const [timeLeft] = useState(90);
   const levelData = getLevelData(levelNumber);
   const isMobile = useIsMobile();
+  const gameRef = useRef<RockStackingGameHandle | null>(null);
 
   return (
     <ScreenBorder>
@@ -74,7 +75,10 @@ export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
               <span className="pixel-font text-xs md:text-sm text-beach-dark-rock">{timeLeft}s</span>
             </div>
 
-            <Button className="retro-button pixel-font text-beach-dark-rock w-8 h-8 md:w-10 md:h-10 p-0 text-xs">
+            <Button onClick={() => gameRef.current?.reset()} className="retro-button pixel-font text-beach-dark-rock w-20 h-10 md:w-20 md:h-12 p-2 text-xs">
+              RESET
+            </Button>
+            <Button className="retro-button pixel-font text-beach-dark-rock w-10 h-10 md:w-12 md:h-12 p-2 text-xs">
               <Pause className="w-3 h-3 md:w-4 md:h-4" strokeWidth={3} />
             </Button>
           </div>
@@ -85,7 +89,7 @@ export function GameScreen({ onNavigate, levelNumber = 1 }: GameScreenProps) {
         <div className="flex-1 relative overflow-hidden">
           {/* Canvas-based gameplay fills the former stacking area bounds */}
           <div className="absolute left-0 right-0 top-0 bottom-0 pixel-border">
-            <RockStackingGame />
+            <RockStackingGame ref={gameRef} />
           </div>
         </div>
 
