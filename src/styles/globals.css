@@ -262,3 +262,14 @@ body {
     box-shadow: 4px 4px 0px #2c1810, inset 0 0 0 2px #f7f3e9;
   }
 }
+
+/* Wave entrance animation: brief overshoot then settle */
+@keyframes wave-surge {
+  0% { width: 98vw; }
+  60% { width: 94vw; }
+  100% { width: 90vw; }
+}
+
+.wave-surge {
+  animation: wave-surge 1000ms ease-out forwards;
+}

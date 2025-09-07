@@ -36,6 +36,7 @@ export interface RockStackingGameProps {
 
 export interface RockStackingGameHandle {
   reset: () => void;
+  flushLeft: () => void;
 }
 
 const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProps>(function RockStackingGame(props, ref) {
@@ -46,6 +47,7 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
   const imagesRef = useRef<Record<string, { img: HTMLImageElement; crop: { x: number; y: number; w: number; h: number } }>>({});
   const pausedRef = useRef<boolean>(false);
   useEffect(() => { pausedRef.current = !!props.paused; }, [props.paused]);
+  const flushLeftRef = useRef<boolean>(false);
   // Eagerly import all sprite URLs at build time
   const spriteUrlMap = (import.meta as any).glob("../assets/rock_art/**/**.png", { eager: true, as: "url" }) as Record<string, string>;
   // Slight visual overscan so bitmaps appear to touch despite transparent borders
@@ -139,7 +141,11 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
     reset() {
       setRocks([]);
       setTypes(props.types.map(t => ({ ...t, anchors: t.anchors.map(a => ({ ...a })) })));
+      flushLeftRef.current = false;
     },
+    flushLeft() {
+      flushLeftRef.current = true;
+    }
   }), [props.types]);
 
   useEffect(() => {
@@ -242,10 +248,10 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
       // Top band: beach-water
       const fy = floorY();
       ctx.fillStyle = water;
-      ctx.fillRect(0, TRAY_H, dimsRef.current.cssWidth, Math.max(0, fy - 20 - TRAY_H));
+      ctx.fillRect(0, TRAY_H, dimsRef.current.cssWidth, Math.max(0, fy - 100 - TRAY_H));
       // Middle strip: deep-water
       ctx.fillStyle = deepWater;
-      ctx.fillRect(0, Math.max(TRAY_H, fy - 20), dimsRef.current.cssWidth, 20);
+      ctx.fillRect(0, Math.max(TRAY_H, fy - 100), dimsRef.current.cssWidth, 100);
       // Bottom band: muted-foreground
       ctx.fillStyle = muted;
       ctx.fillRect(0, fy + 1, dimsRef.current.cssWidth, Math.max(0, dimsRef.current.cssHeight - (fy + 1)));
@@ -343,6 +349,17 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
           if (!r.dragging && !r.isStatic) {
             updatePhysics(r, settledList, ground);
           }
+        });
+      }
+
+      // If flush-left is active, force all rocks to become dynamic and surge left
+      if (flushLeftRef.current) {
+        rocks.forEach(r => {
+          r.isStatic = false;
+          r.velocity = r.velocity || { x: 0, y: 0 };
+          // strong left push and slight downward pull to ensure ground contact
+          r.velocity.x = Math.min(r.velocity.x, -8);
+          r.velocity.y += 0.8;
         });
       }
 

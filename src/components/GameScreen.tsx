@@ -1,6 +1,6 @@
 import { Button } from "./ui/button";
 import { Progress } from "./ui/progress";
-import { Pause, Timer, Info, ArrowLeft } from "lucide-react";
+import { Pause, Timer, Info } from "lucide-react";
 import { ScreenBorder } from "./ScreenBorder";
 import { Header } from "./Header";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -9,7 +9,8 @@ import RockStackingGame, { RockStackingGameHandle } from "../gameplay-logic/Rock
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "./ui/hover-card";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { useIsMobile } from "./ui/use-mobile";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
+import CharacterOverlay from "./CharacterOverlay";
+import { GoalModal, WinModal, FailModal, PauseModal } from "./GameScreenModal";
 
 interface GameScreenProps {
   onNavigate: (screen: string) => void;
@@ -26,6 +27,8 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
   const [gameOver, setGameOver] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [goalOpen, setGoalOpen] = useState(true);
+  const [pauseOpen, setPauseOpen] = useState(false);
+  const [showWave, setShowWave] = useState(false);
   // derived via onStateChange each frame; no need to store unused values
   const isMobile = useIsMobile();
   const gameRef = useRef<RockStackingGameHandle | null>(null);
@@ -45,6 +48,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
     setGameOver(false);
     setHasInteracted(false);
     setGoalOpen(true);
+    setShowWave(false);
   }, [startingTime, levelNumber]);
 
   // Timer loop
@@ -53,7 +57,15 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
     if (timeLeft <= 0) {
       setGameOver(true);
       setPaused(true);
-      setFailOpen(true);
+      setShowWave(true);
+      // 1s after wave shows, reset rocks back to tray; then open fail modal
+      window.setTimeout(() => {
+        gameRef.current?.reset();
+      }, 1000);
+      window.setTimeout(() => {
+        setShowWave(false);
+        setFailOpen(true);
+      }, 1600);
       return;
     }
     const id = setInterval(() => setTimeLeft((t) => (t === null ? t : t - 1)), 1000);
@@ -126,10 +138,10 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
               </div>
             )}
 
-            <Button onClick={() => gameRef.current?.reset()} className="retro-button pixel-font text-beach-dark-rock w-20 h-10 md:w-20 md:h-12 p-2 text-xs">
+            <Button onClick={() => { gameRef.current?.reset(); setGameOver(false); setHasInteracted(false); setTimeLeft(startingTime); }} className="retro-button pixel-font text-beach-dark-rock w-20 h-10 md:w-20 md:h-12 p-2 text-xs">
               RESET
             </Button>
-            <Button onClick={() => setPaused(p => !p)} className="retro-button pixel-font text-beach-dark-rock w-10 h-10 md:w-12 md:h-12 p-2 text-xs">
+            <Button onClick={() => { setPaused(true); setPauseOpen(true); }} className="retro-button pixel-font text-beach-dark-rock w-10 h-10 md:w-12 md:h-12 p-2 text-xs">
               <Pause className="w-3 h-3 md:w-4 md:h-4" strokeWidth={3} />
             </Button>
           </div>
@@ -153,82 +165,55 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
             </div>
           </div>
         </div>
-        {/* WIN MODAL */}
-        {/* GOAL MODAL */}
-        <Dialog open={goalOpen} onOpenChange={(open) => { setGoalOpen(open); if (!open) setPaused(false); }}>
-          <DialogContent hideClose>
-            <DialogHeader>
-              <DialogTitle className="pixel-font">LEVEL {String(levelNumber)} GOAL</DialogTitle>
-            </DialogHeader>
-            <div className="pixel-font text-sm">{levelData.goal}</div>
-            {isTimed && (
-              <div className="pixel-font text-xs mt-2">You have {startingTime ?? 0}s. The timer starts when you press START.</div>
-            )}
-            <DialogFooter className="w-full">
-              <div className="flex w-full items-center justify-end gap-2">
-                <Button className="retro-button pixel-font text-beach-foam w-28 h-12 md:w-32 md:h-14 text-xs md:text-sm" onClick={() => { setGoalOpen(false); setPaused(false); setHasInteracted(false); setTimeLeft(startingTime); }}>START</Button>
-              </div>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        
-        {/* WIN MODAL */}
-        <Dialog open={winOpen} onOpenChange={setWinOpen}>
-          <DialogContent hideClose>
-            <DialogHeader>
-              <DialogTitle className="pixel-font">LEVEL {String(levelNumber)} COMPLETED!</DialogTitle>
-            </DialogHeader>
-            <div className="pixel-font text-sm">{isTimed ? `Finished with ${timeLeft ?? 0}s left.` : ``}</div>
-            <DialogFooter className="w-full">
-              <div className="flex w-full items-center justify-between gap-2">
-                <div>
-                  <Button className="retro-button pixel-font text-beach-foam w-28 h-12 md:w-32 md:h-14 text-xs md:text-sm inline-flex items-center gap-2" onClick={() => { setWinOpen(false); onNavigate('levels'); }}>
-                    <ArrowLeft className="w-4 h-4" />
-                    LEVELS
-                  </Button>
-                </div>
-                <div className="flex gap-2">
-                  <Button className="retro-button pixel-font text-beach-foam w-28 h-12 md:w-32 md:h-14 text-xs md:text-sm" onClick={() => { setWinOpen(false); gameRef.current?.reset(); setGameOver(false); setPaused(false); setTimeLeft(startingTime); }}>REPLAY</Button>
-                  <Button className="retro-button pixel-font text-beach-foam w-28 h-12 md:w-32 md:h-14 text-xs md:text-sm" onClick={() => {
-                    // fully reset local state and gameplay before moving to next level
-                    gameRef.current?.reset();
-                    setGameOver(false);
-                    setPaused(false);
-                    setFailOpen(false);
-                    setWinOpen(false);
-                    setTimeLeft(null);
-                    const next = levelNumber + 1;
-                    if (onStartLevel) onStartLevel(next);
-                    else onNavigate('levels');
-                  }}>NEXT</Button>
-                </div>
-              </div>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        {/* Modals */}
+        <PauseModal
+          open={pauseOpen}
+          onOpenChange={(open) => { setPauseOpen(open); if (!open) setPaused(false); }}
+          isTimed={isTimed}
+          timeLeft={timeLeft}
+          onResume={() => { setPauseOpen(false); setPaused(false); }}
+          onRestart={() => { gameRef.current?.reset(); setGameOver(false); setHasInteracted(false); setTimeLeft(startingTime); setPauseOpen(false); setPaused(false); }}
+        />
+        <GoalModal
+          open={goalOpen}
+          onOpenChange={(open) => { setGoalOpen(open); if (!open) setPaused(false); }}
+          levelNumber={levelNumber}
+          goalText={levelData.goal ?? ""}
+          isTimed={isTimed}
+          startingTime={startingTime}
+          onStart={() => { setGoalOpen(false); setPaused(false); setHasInteracted(false); setTimeLeft(startingTime); }}
+        />
 
-        {/* FAIL MODAL */}
-        <Dialog open={failOpen} onOpenChange={setFailOpen}>
-          <DialogContent hideClose>
-            <DialogHeader>
-              <DialogTitle className="pixel-font">TRY AGAIN?</DialogTitle>
-            </DialogHeader>
-            <div className="pixel-font text-sm">{isTimed ? `Time's up!` : `Challenge not met.`}</div>
-            <DialogFooter className="w-full">
-              <div className="flex w-full items-center justify-between gap-2">
-                <div>
-                  <Button className="retro-button pixel-font text-beach-foam w-28 h-12 md:w-32 md:h-14 text-xs md:text-sm inline-flex items-center gap-2" onClick={() => { setFailOpen(false); onNavigate('levels'); }}>
-                    <ArrowLeft className="w-4 h-4" />
-                    LEVELS
-                  </Button>
-                </div>
-                <div className="flex gap-2">
-                  <Button className="retro-button pixel-font text-beach-foam w-28 h-12 md:w-32 md:h-14 text-xs md:text-sm" onClick={() => { setFailOpen(false); gameRef.current?.reset(); setGameOver(false); setPaused(false); setHasInteracted(false); setTimeLeft(startingTime); }}>RETRY</Button>
-                </div>
-              </div>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <WinModal
+          open={winOpen}
+          onOpenChange={setWinOpen}
+          levelNumber={levelNumber}
+          isTimed={isTimed}
+          timeLeft={timeLeft}
+          onLevels={() => { setWinOpen(false); onNavigate('levels'); }}
+          onReplay={() => { setWinOpen(false); gameRef.current?.reset(); setGameOver(false); setPaused(false); setTimeLeft(startingTime); }}
+          onNext={() => {
+            gameRef.current?.reset();
+            setGameOver(false);
+            setPaused(false);
+            setFailOpen(false);
+            setWinOpen(false);
+            setTimeLeft(null);
+            const next = levelNumber + 1;
+            if (onStartLevel) onStartLevel(next);
+            else onNavigate('levels');
+          }}
+        />
+
+        <FailModal
+          open={failOpen}
+          onOpenChange={setFailOpen}
+          isTimed={isTimed}
+          onLevels={() => { setFailOpen(false); onNavigate('levels'); }}
+          onRetry={() => { setFailOpen(false); gameRef.current?.reset(); setShowWave(false); setGameOver(false); setPaused(false); setHasInteracted(false); setTimeLeft(startingTime); }}
+        />
+        {/* Character Overlay */}
+        {!isMobile && !pauseOpen && <CharacterOverlay showWave={showWave} />}
       </div>
     </ScreenBorder>
   );
