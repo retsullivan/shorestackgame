@@ -1,0 +1,12 @@
+{
+    "name": "daytime",
+    "colors": {
+        "sky":"#4cb8c8",
+        "water":"#2f8585"
+    },
+    "islands":{
+        "island_1":"island_daytime_mountains.png",
+        "island_2":"island_daytime_trees.png"
+    }
+}
+
