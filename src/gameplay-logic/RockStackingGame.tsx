@@ -32,6 +32,8 @@ export interface RockStackingGameProps {
     remainingTray: number;
     touchingGroundStatic: number;
   }) => void;
+  themeColors?: { sky: string; water: string };
+  onHorizonChange?: (pageY: number) => void;
 }
 
 export interface RockStackingGameHandle {
@@ -152,18 +154,21 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext("2d")!;
     ctx.imageSmoothingEnabled = false;
-    const deepWater =
-      getComputedStyle(document.documentElement)
-        .getPropertyValue('--beach-deep-water')
-        .trim() || '#2f8585';
-    const water =
+    const skyColor = props.themeColors?.sky ?? (
       getComputedStyle(document.documentElement)
         .getPropertyValue('--beach-water')
-        .trim() || '#4cb8c8';
+        .trim() || '#4cb8c8'
+    );
+    const waterColor = props.themeColors?.water ?? (
+      getComputedStyle(document.documentElement)
+        .getPropertyValue('--beach-deep-water')
+        .trim() || '#2f8585'
+    );
     const muted =
       getComputedStyle(document.documentElement)
         .getPropertyValue('--muted-foreground')
         .trim() || '#717182';
+    const lastHorizonRef = { current: -1 } as { current: number };
 
     function ensureCanvasSize() {
       const cssWidth = canvas.clientWidth || 0;
@@ -245,14 +250,15 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
     }
 
     function drawStackArea() {
-      // Top band: beach-water
+      // Top band: sky
       const fy = floorY();
-      ctx.fillStyle = water;
-      ctx.fillRect(0, TRAY_H, dimsRef.current.cssWidth, Math.max(0, fy - 100 - TRAY_H));
-      // Middle strip: deep-water
-      ctx.fillStyle = deepWater;
-      ctx.fillRect(0, Math.max(TRAY_H, fy - 100), dimsRef.current.cssWidth, 100);
-      // Bottom band: muted-foreground
+      const horizonY = Math.max(TRAY_H, fy - 100);
+      ctx.fillStyle = skyColor;
+      ctx.fillRect(0, TRAY_H, dimsRef.current.cssWidth, Math.max(0, horizonY - TRAY_H));
+      // Middle strip: water
+      ctx.fillStyle = waterColor;
+      ctx.fillRect(0, horizonY, dimsRef.current.cssWidth, Math.max(0, fy - horizonY));
+      // Bottom band: sand (muted-foreground, unchanged)
       ctx.fillStyle = muted;
       ctx.fillRect(0, fy + 1, dimsRef.current.cssWidth, Math.max(0, dimsRef.current.cssHeight - (fy + 1)));
     }
@@ -343,6 +349,16 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
 
       // Lightweight physics step per frame
       const ground = floorY();
+      // Report horizon to parent in viewport coordinates
+      if (props.onHorizonChange) {
+        const canvasTop = canvas.getBoundingClientRect().top;
+        const horizonLocal = Math.max(TRAY_H, ground - 100);
+        const horizonPage = canvasTop + horizonLocal;
+        if (Math.abs(horizonPage - lastHorizonRef.current) >= 1) {
+          lastHorizonRef.current = horizonPage;
+          props.onHorizonChange(horizonPage);
+        }
+      }
       if (!pausedRef.current) {
         const settledList = rocks.filter(r => r.isStatic && !r.dragging);
         rocks.forEach(r => {

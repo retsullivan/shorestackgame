@@ -3,6 +3,7 @@
   "name": "TIDE POOLS",
   "goal": "Build a stable stack with all 5 rocks",
   "theme": "daytime",
+  "overlay_theme": "daytime_theme_2.json",
   "challenge":{
     "type": "balance",
     "timeLimit": null,

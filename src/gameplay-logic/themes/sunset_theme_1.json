@@ -1,0 +1,12 @@
+{
+    "name": "sunset",
+    "colors": {
+        "sky":"#fba596",
+        "water":"#3b4495"
+    },
+    "islands":{
+        "island_1":"island_sunset_mountains.png",
+        "island_2":"island_sunset_sparse.png"
+    }
+}
+

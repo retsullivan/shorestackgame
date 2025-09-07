@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { useIsMobile } from "./ui/use-mobile";
 import CharacterOverlay from "./CharacterOverlay";
 import { GoalModal, WinModal, FailModal, PauseModal } from "./GameScreenModal";
+import { getTheme } from "../gameplay-logic/themes";
 
 interface GameScreenProps {
   onNavigate: (screen: string) => void;
@@ -20,6 +21,8 @@ interface GameScreenProps {
 
 export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameScreenProps) {
   const levelData = useMemo(() => getLevelData(levelNumber), [levelNumber]);
+  const overlayThemeName = levelData.overlayTheme ?? levelData.theme;
+  const themeConfig = useMemo(() => getTheme(overlayThemeName), [overlayThemeName]);
   const [paused, setPaused] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [winOpen, setWinOpen] = useState(false);
@@ -29,6 +32,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
   const [goalOpen, setGoalOpen] = useState(true);
   const [pauseOpen, setPauseOpen] = useState(false);
   const [showWave, setShowWave] = useState(false);
+  const [horizonPageY, setHorizonPageY] = useState<number | null>(null);
   // derived via onStateChange each frame; no need to store unused values
   const isMobile = useIsMobile();
   const gameRef = useRef<RockStackingGameHandle | null>(null);
@@ -88,7 +92,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
 
   return (
     <ScreenBorder>
-      <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(180deg, #8e44ad 0%, #4fb3d9 80%, #e8d5b7 100%)' }}>
+      <div className="min-h-screen flex flex-col" style={{ background: `linear-gradient(180deg, ${themeConfig.colors.sky} 0%, ${themeConfig.colors.sky} 60%, ${themeConfig.colors.water} 100%)` }}>
         {/* Game Header */}
         <div className="flex flex-col px-3 py-2 md:p-4 gap-2 sm:gap-0">
           <div className="flex items-center space-x-2 md:space-x-8">
@@ -152,7 +156,16 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
         <div className="flex-1 relative overflow-hidden">
           {/* Canvas-based gameplay fills the former stacking area bounds */}
           <div className="absolute left-0 right-0 top-0 bottom-0 pixel-border">
-            <RockStackingGame key={levelNumber} ref={gameRef} types={levelData.types} theme={levelData.theme} paused={paused} onStateChange={handleStateChange} />
+            <RockStackingGame
+              key={levelNumber}
+              ref={gameRef}
+              types={levelData.types}
+              theme={levelData.theme}
+              paused={paused}
+              onStateChange={handleStateChange}
+              themeColors={{ sky: themeConfig.colors.sky, water: themeConfig.colors.water }}
+              onHorizonChange={(y) => setHorizonPageY(y)}
+            />
           </div>
         </div>
 
@@ -213,7 +226,9 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
           onRetry={() => { setFailOpen(false); gameRef.current?.reset(); setShowWave(false); setGameOver(false); setPaused(false); setHasInteracted(false); setTimeLeft(startingTime); }}
         />
         {/* Character Overlay */}
-        {!isMobile && !pauseOpen && <CharacterOverlay showWave={showWave} />}
+        {!isMobile && !pauseOpen && (
+          <CharacterOverlay showWave={showWave} horizonPageY={horizonPageY ?? undefined} islands={themeConfig.islands} />
+        )}
       </div>
     </ScreenBorder>
   );

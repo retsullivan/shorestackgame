@@ -3,7 +3,8 @@
   "name": "SHELL RIDGE",
   "goal": "Build a stack taller than your ocean friend",
   "tip":"You can rotate the rocks by pressing the spacebar",
-  "theme": "mixed",
+  "theme": "sunset",
+  "overlay_theme": "sunset_theme_2.json",
   "challenge": { "type": "height", "timeLimit": null, "difficulty": "easy" },
   "rocks": [
     { "id": "rock_large", "count": 3 },

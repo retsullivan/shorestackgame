@@ -30,6 +30,7 @@ export interface LevelJson {
   challenge?: LevelChallenge;
   rocks: Array<{ id: string; count: number }>;
   theme?: "daytime" | "sunset" | "mixed";
+  overlayTheme?: "daytime" | "sunset" | "mixed";
 }
 
 // Rock catalog JSON entry with geometry/draw dimensions
@@ -51,6 +52,7 @@ export interface LevelData {
   tip?: string;
   types: RockType[];
   theme: "daytime" | "sunset" | "mixed";
+  overlayTheme?: "daytime" | "sunset" | "mixed";
   challenge?: LevelChallenge;
 }
 

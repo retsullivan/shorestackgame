@@ -3,6 +3,7 @@
   "name": "CORAL COVE",
   "goal": "Build a stable stack before the tide comes in",
   "theme": "sunset",
+  "overlay_theme": "sunset_theme_2.json",
   "challenge":{
     "type": "timed",
     "timeLimit": 30,

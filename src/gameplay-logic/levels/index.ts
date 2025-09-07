@@ -31,6 +31,7 @@ export function getLevelData(id: number): LevelData {
     tip: lvl.tip,
     types,
     theme: lvl.theme ?? "daytime",
+    overlayTheme: (lvl as any).overlay_theme ?? lvl.overlayTheme ?? lvl.theme ?? "daytime",
     challenge: lvl.challenge,
   };
 }
