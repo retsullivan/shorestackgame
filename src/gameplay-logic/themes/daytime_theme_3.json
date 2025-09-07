@@ -6,6 +6,7 @@
     },
     "islands":{
         "island_1":"island_daytime_mountains.png"
-    }
+    },
+    "music": "shorestack_daytime.mp3"
 }
 

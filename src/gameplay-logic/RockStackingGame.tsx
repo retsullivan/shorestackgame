@@ -31,9 +31,13 @@ export interface RockStackingGameProps {
     staticCount: number;
     remainingTray: number;
     touchingGroundStatic: number;
+    stackHeightPx: number;
   }) => void;
   themeColors?: { sky: string; water: string };
   onHorizonChange?: (pageY: number) => void;
+  onStackTopChange?: (pageX: number, pageY: number) => void;
+  onStackRightBaseChange?: (pageX: number, pageY: number) => void;
+  onStackRightStepsChange?: (steps: { x: number; y: number }[]) => void;
 }
 
 export interface RockStackingGameHandle {
@@ -391,15 +395,72 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
 
       // Report game state upward each frame if requested
       if (props.onStateChange) {
-        const touchingGroundStatic = rocks.filter(r => r.isStatic && !r.dragging).filter(r => {
+        const settledStatics = rocks.filter(r => r.isStatic && !r.dragging);
+        const touchingGroundStatic = settledStatics.filter(r => {
           const pts = toWorldPoly(r);
           const lowestY = Math.max(...pts.map(p => p.y));
           return Math.abs(lowestY - ground) <= 1.0;
         }).length;
-        const staticCount = rocks.filter(r => r.isStatic && !r.dragging).length;
+        const staticCount = settledStatics.length;
         const totalPlaced = rocks.length;
         const remainingTray = types.reduce((acc, t) => acc + (t.count || 0), 0);
-        props.onStateChange({ totalPlaced, staticCount, remainingTray, touchingGroundStatic });
+        // Compute stack height as distance from floor to highest top of any settled static rock
+        let stackHeightPx = 0;
+        let topPageX: number | null = null;
+        let topPageY: number | null = null;
+        let rightBasePageX: number | null = null;
+        let rightBasePageY: number | null = null;
+        let rightSteps: { x: number; y: number }[] = [];
+        if (settledStatics.length > 0) {
+          let bestMinY = Infinity;
+          let bestRock: typeof settledStatics[number] | null = null;
+          let rightMostX = -Infinity;
+          for (const r of settledStatics) {
+            const pts = toWorldPoly(r);
+            const minY = Math.min(...pts.map(p => p.y));
+            if (minY < bestMinY) { bestMinY = minY; bestRock = r; }
+            const maxX = Math.max(...pts.map(p => p.x));
+            if (maxX > rightMostX) rightMostX = maxX;
+          }
+          const minTopY = bestMinY;
+          stackHeightPx = Math.max(0, ground - minTopY);
+          if (bestRock) {
+            const pts = toWorldPoly(bestRock);
+            const topY = Math.min(...pts.map(p => p.y));
+            const nearTop = pts.filter(p => Math.abs(p.y - topY) <= 0.5);
+            const avgX = nearTop.length > 0
+              ? nearTop.reduce((a, b) => a + b.x, 0) / nearTop.length
+              : (Math.min(...pts.map(p => p.x)) + Math.max(...pts.map(p => p.x))) / 2;
+            const rect = canvas.getBoundingClientRect();
+            topPageX = rect.left + avgX;
+            topPageY = rect.top + topY;
+            if (isFinite(rightMostX)) {
+              rightBasePageX = rect.left + rightMostX;
+              rightBasePageY = rect.top + ground;
+            }
+            // build right-edge hop steps along rocks whose right edge is near global rightMostX
+            const TOL_X = 6; // px
+            const candidates = settledStatics.map(rock => ({ pts: toWorldPoly(rock) }));
+            const nearRight = candidates
+              .map(({ pts }) => ({
+                topY: Math.min(...pts.map(p => p.y)),
+                rightX: Math.max(...pts.map(p => p.x)),
+              }))
+              .filter(v => Math.abs(v.rightX - rightMostX) <= TOL_X)
+              .sort((a, b) => b.topY - a.topY); // bottom to top (larger y means lower on screen)
+            rightSteps = nearRight.map(v => ({ x: rect.left + v.rightX, y: rect.top + v.topY }));
+          }
+        }
+        props.onStateChange({ totalPlaced, staticCount, remainingTray, touchingGroundStatic, stackHeightPx });
+        if (props.onStackTopChange && topPageX !== null && topPageY !== null) {
+          props.onStackTopChange(topPageX, topPageY);
+        }
+        if (props.onStackRightBaseChange && rightBasePageX !== null && rightBasePageY !== null) {
+          props.onStackRightBaseChange(rightBasePageX, rightBasePageY);
+        }
+        if (props.onStackRightStepsChange && rightSteps.length > 0) {
+          props.onStackRightStepsChange(rightSteps);
+        }
       }
       requestAnimationFrame(render);
     }

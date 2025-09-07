@@ -277,18 +277,18 @@ body {
 /* Snail climb animation: rises up and slightly left as if climbing */
 @keyframes snail-climb-frames {
   0% { transform: translate(0, 0); }
-  20% { transform: translate(-4px, -10px); }
-  40% { transform: translate(-8px, -20px); }
-  60% { transform: translate(-12px, -32px); }
-  80% { transform: translate(-16px, -44px); }
-  100% { transform: translate(-20px, -58px); }
+  20% { transform: translate(-6px, -8px); }
+  40% { transform: translate(-12px, -18px); }
+  60% { transform: translate(-18px, -32px); }
+  80% { transform: translate(-24px, -48px); }
+  100% { transform: translate(-30px, -66px); }
 }
 
 .snail-climb {
-  animation: snail-climb-frames 1400ms steps(8, end) forwards;
+  animation: snail-climb-frames 2200ms steps(10, end) forwards;
 }
 
 /* Smoothly move container when we change to absolute coordinates */
 .snail-move {
-  transition: left 400ms ease-out, top 400ms ease-out, right 400ms ease-out, bottom 400ms ease-out, transform 400ms ease-out;
+  transition: left 900ms cubic-bezier(0.22, 1, 0.36, 1), top 900ms cubic-bezier(0.22, 1, 0.36, 1), right 900ms cubic-bezier(0.22, 1, 0.36, 1), bottom 900ms cubic-bezier(0.22, 1, 0.36, 1), transform 900ms cubic-bezier(0.22, 1, 0.36, 1);
 }

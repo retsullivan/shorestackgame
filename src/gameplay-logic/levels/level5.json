@@ -1,18 +1,17 @@
 {
-  "id": 4,
+  "id": 5,
   "name": "CORAL COVE",
   "goal": "Build a stable stack before the tide comes in",
   "theme": "sunset",
-  "overlay_theme": "sunset_theme_2.json",
+  "overlay_theme": "sunset_theme_3.json",
   "challenge":{
     "type": "timed",
-    "timeLimit": 30,
+    "timeLimit": 20,
     "difficulty": "medium"
   },
   "rocks": [
-    { "id": "rock_large", "count": 2 },
-    { "id": "rock_small", "count": 2 },
-    { "id": "trapezoid_large", "count": 1 },
+    { "id": "rock_small", "count": 3 },
+    { "id": "trapezoid_small", "count": 3 },
     { "id": "triangle_small", "count": 1 }
   ]
 }

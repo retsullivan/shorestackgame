@@ -1,0 +1,18 @@
+{
+  "id": 9,
+  "name": "SHELL RIDGE",
+  "goal": "Build a stack taller than your ocean friend",
+  "tip":"You can rotate the rocks by pressing the spacebar",
+  "theme": "sunset",
+  "overlay_theme": "sunset_theme_2.json",
+  "challenge": { "type": "height", "timeLimit": null, "difficulty": "easy" },
+  "rocks": [
+    { "id": "rock_large", "count": 3 },
+    { "id": "rock_small", "count": 3 },
+    { "id": "trapezoid_large", "count": 2 },
+    { "id": "triangle_small", "count": 2 },
+    { "id": "isoceles_large", "count": 2 }
+  ]
+}
+
+

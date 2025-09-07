@@ -1,7 +1,7 @@
 {
   "id": 1,
   "name": "TIDE POOLS",
-  "goal": "Build a stable stack with all 5 rocks",
+  "goal": "Build a stable stack with all the rocks",
   "theme": "daytime",
   "overlay_theme": "daytime_theme_2.json",
   "challenge":{
@@ -10,10 +10,7 @@
     "difficulty": "easy"
   },
   "rocks": [
-    { "id": "rock_large", "count": 1 },
-    { "id": "rock_small", "count": 2 },
-    { "id": "trapezoid_small", "count": 1 },
-    { "id": "triangle_small", "count": 1 }
+    { "id": "rock_large", "count": 4 }
   ]
 }
 

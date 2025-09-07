@@ -1,5 +1,6 @@
+import { useEffect } from 'react';
 import snail from '../assets/character_art/pink_snail_large.gif';
-import snailClimb from '../assets/character_art/pink_snail_schmoove.gif';
+import happySnail from '../assets/character_art/happy_snail_large.gif';
 import wave from '../assets/scenery/wave_crash_large.gif';
 // Responsive sizing handled via CSS breakpoints
 
@@ -8,9 +9,16 @@ interface CharacterOverlayProps {
   horizonPageY?: number;
   islands?: string[];
   showClimb?: boolean;
+  stackTopPage?: { x: number; y: number };
+  rightBasePage?: { x: number; y: number };
+  stepTargetPage?: { x: number; y: number } | null;
+  showHappy?: boolean;
 }
 
-export default function CharacterOverlay({ showWave = false, horizonPageY, islands = [], showClimb = false }: CharacterOverlayProps) {
+export default function CharacterOverlay({ showWave = false, horizonPageY, islands = [], showClimb = false, stackTopPage, rightBasePage, stepTargetPage, showHappy = false }: CharacterOverlayProps) {
+  useEffect(() => {
+    // no-op placeholder to keep consistent hook ordering if props change
+  }, [showClimb, stackTopPage]);
   return (
     <>
       {/* Distant island scenery at horizon */}
@@ -56,15 +64,22 @@ export default function CharacterOverlay({ showWave = false, horizonPageY, islan
         </div>
       )}
 
-      {/* Right-side character */}
+      {/* Snail character: default bottom-right; when climbing, move to stack top */}
       <div
-        className="z-50 pointer-events-none select-none hidden md:block"
-        style={{ position: 'fixed', right: 16, bottom: 16 }}
+        className="z-50 pointer-events-none select-none hidden md:block snail-move"
+        style={{
+          position: 'fixed',
+          right: showClimb && (stackTopPage || rightBasePage || stepTargetPage) ? undefined : 16,
+          bottom: showClimb && (stackTopPage || rightBasePage || stepTargetPage) ? undefined : 16,
+          left: showClimb && (stackTopPage || rightBasePage || stepTargetPage) ? Math.round((stepTargetPage ?? stackTopPage ?? rightBasePage)!.x) : undefined,
+          top: showClimb && (stackTopPage || rightBasePage || stepTargetPage) ? Math.round((stepTargetPage ?? stackTopPage ?? rightBasePage)!.y) : undefined,
+          transform: showClimb && (stackTopPage || rightBasePage || stepTargetPage) ? 'translate(-50%, -100%)' : 'none',
+        }}
       >
         <img
-          src={showClimb ? snailClimb : snail}
+          src={showClimb || showHappy ? happySnail : snail}
           alt="Pink snail character"
-          className={`block h-auto ${showClimb ? 'snail-climb' : ''}`}
+          className="block h-auto"
           style={{ imageRendering: 'pixelated' }}
         />
       </div>
