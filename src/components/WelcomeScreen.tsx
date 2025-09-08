@@ -24,7 +24,7 @@ export function WelcomeScreen({ onNavigate }: WelcomeScreenProps) {
           <img src={logoImage} alt="Shore Stack logo" className="w-48 md:w-72 lg:w-96 drop-shadow-lg" />
         </div>
         <h2 className="pixel-font text-md lg:text-xl text-beach-foam mb-6 md:mb-8 drop-shadow-md">
-          A COZY BEACH ADVENTURE
+          A COZY RETRO PUZZLE GAME
         </h2>
         
         {/* Subtitle */}
