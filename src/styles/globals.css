@@ -285,10 +285,10 @@ body {
 }
 
 .snail-climb {
-  animation: snail-climb-frames 2200ms steps(10, end) forwards;
+  animation: snail-climb-frames 50ms steps(10, end) forwards;
 }
 
 /* Smoothly move container when we change to absolute coordinates */
 .snail-move {
-  transition: left 900ms cubic-bezier(0.22, 1, 0.36, 1), top 900ms cubic-bezier(0.22, 1, 0.36, 1), right 900ms cubic-bezier(0.22, 1, 0.36, 1), bottom 900ms cubic-bezier(0.22, 1, 0.36, 1), transform 900ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: left 50ms cubic-bezier(0.22, 1, 0.36, 1), top 900ms cubic-bezier(0.22, 1, 0.36, 1), right 900ms cubic-bezier(0.22, 1, 0.36, 1), bottom 900ms cubic-bezier(0.22, 1, 0.36, 1), transform 900ms cubic-bezier(0.22, 1, 0.36, 1);
 }

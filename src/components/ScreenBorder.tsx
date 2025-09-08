@@ -14,6 +14,8 @@ export function ScreenBorder({ children }: ScreenBorderProps) {
       <div>
         {children}
       </div>
+
+      
     </div>
   );
 }

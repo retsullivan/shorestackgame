@@ -6,6 +6,7 @@ import { ScreenBorder } from "./ScreenBorder";
 import { Header } from "./Header";
 import { useState } from "react";
 import { useSettings } from "./SettingsContext";
+import happySnail from '../assets/character_art/happy_snail_cropped_large.gif';
 
 interface SettingsScreenProps {
   onNavigate: (screen: string) => void;
@@ -72,11 +73,9 @@ export function SettingsScreen({ onNavigate }: SettingsScreenProps) {
           </div>
         </div>
 
-        {/* Decorative sea creatures */}
-        <div className="flex justify-center mt-8 space-x-6">
-          <div className="w-6 h-6 bg-beach-coral rounded-full pixel-border animate-pulse"></div>
-          <div className="w-8 h-8 bg-beach-seaweed rounded-full pixel-border animate-pulse" style={{ animationDelay: '0.5s' }}></div>
-          <div className="w-6 h-6 bg-beach-sunset rounded-full pixel-border animate-pulse" style={{ animationDelay: '1s' }}></div>
+        {/* Happy snail at bottom center for Settings screen */}
+        <div className="pointer-events-none select-none" style={{ position: 'fixed', left: '50%', bottom: 12, transform: 'translateX(-50%)', zIndex: 30 }}>
+          <img src={happySnail} alt="Happy snail" className="block h-auto" style={{ imageRendering: 'pixelated', width: 120 }} />
         </div>
         </div>
       </div>

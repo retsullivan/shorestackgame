@@ -38,6 +38,7 @@ export interface RockStackingGameProps {
   onStackTopChange?: (pageX: number, pageY: number) => void;
   onStackRightBaseChange?: (pageX: number, pageY: number) => void;
   onStackRightStepsChange?: (steps: { x: number; y: number }[]) => void;
+  islands?: string[]; // resolved asset URLs for island images
 }
 
 export interface RockStackingGameHandle {
@@ -51,6 +52,7 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
   const [types, setTypes] = useState<RockType[]>([]);
   const [rocks, setRocks] = useState<RockInstance[]>([]);
   const imagesRef = useRef<Record<string, { img: HTMLImageElement; crop: { x: number; y: number; w: number; h: number } }>>({});
+  const islandImagesRef = useRef<HTMLImageElement[]>([]);
   const pausedRef = useRef<boolean>(false);
   useEffect(() => { pausedRef.current = !!props.paused; }, [props.paused]);
   const flushLeftRef = useRef<boolean>(false);
@@ -64,6 +66,21 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
   const dragRef = useRef<{ rock: RockInstance | null; offX: number; offY: number; secondFingerDown: boolean }>(
     { rock: null, offX: 0, offY: 0, secondFingerDown: false }
   );
+
+  useEffect(() => {
+    // Preload island images for drawing behind rocks
+    const islands = props.islands ?? [];
+    if (islands.length === 0) { islandImagesRef.current = []; return; }
+    const imgs: HTMLImageElement[] = [];
+    let remaining = islands.length;
+    islands.slice(0, 2).forEach((src, idx) => {
+      const img = new Image();
+      img.src = src;
+      img.onload = () => { remaining--; if (remaining === 0) islandImagesRef.current = imgs; };
+      img.onerror = () => { remaining--; if (remaining === 0) islandImagesRef.current = imgs; };
+      imgs[idx] = img;
+    });
+  }, [props.islands]);
 
   useEffect(() => {
     // initialize tray types from props; deep copy counts so we can mutate locally
@@ -265,6 +282,34 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
       // Bottom band: sand (muted-foreground, unchanged)
       ctx.fillStyle = muted;
       ctx.fillRect(0, fy + 1, dimsRef.current.cssWidth, Math.max(0, dimsRef.current.cssHeight - (fy + 1)));
+      // Islands: draw anchored at horizon, behind rocks
+      if (islandImagesRef.current.length > 0) {
+        const horizonYLocal = Math.max(TRAY_H, fy - 100);
+        const first = islandImagesRef.current[0];
+        const second = islandImagesRef.current[1];
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        if (first) {
+          const w = Math.floor(dimsRef.current.cssWidth * 0.22);
+          const scale = w / first.naturalWidth;
+          const h = Math.floor(first.naturalHeight * scale);
+          const x = Math.floor(dimsRef.current.cssWidth * 0.05);
+          const y = Math.floor(horizonYLocal - h);
+          ctx.globalAlpha = 0.9;
+          ctx.drawImage(first, 0, 0, first.naturalWidth, first.naturalHeight, x, y, w, h);
+        }
+        if (second) {
+          const w = Math.floor(dimsRef.current.cssWidth * 0.16);
+          const scale = w / second.naturalWidth;
+          const h = Math.floor(second.naturalHeight * scale);
+          const x = Math.floor(dimsRef.current.cssWidth * 0.55);
+          const y = Math.floor(horizonYLocal - h);
+          ctx.globalAlpha = 0.8;
+          ctx.drawImage(second, 0, 0, second.naturalWidth, second.naturalHeight, x, y, w, h);
+        }
+        ctx.globalAlpha = 1;
+        ctx.restore();
+      }
     }
 
     function drawRocks() {
@@ -649,14 +694,19 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
     const mouseup = (e: MouseEvent) => onUp(e.clientX, e.clientY);
 
     const touchstart = (e: TouchEvent) => {
+      e.preventDefault();
       onDown(e.touches[0].clientX, e.touches[0].clientY, e.touches.length);
       if (dragRef.current.rock && e.touches.length === 2 && !dragRef.current.secondFingerDown) {
         rotateDragging(90);
         dragRef.current.secondFingerDown = true;
       }
     };
-    const touchmove = (e: TouchEvent) => onMove(e.touches[0].clientX, e.touches[0].clientY);
+    const touchmove = (e: TouchEvent) => {
+      e.preventDefault();
+      onMove(e.touches[0].clientX, e.touches[0].clientY);
+    };
     const touchend = (e: TouchEvent) => {
+      e.preventDefault();
       const t = e.changedTouches[0];
       onUp(t.clientX, t.clientY);
     };
@@ -680,8 +730,8 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
     canvas.addEventListener("mousemove", mousemove);
     canvas.addEventListener("mouseup", mouseup);
 
-    canvas.addEventListener("touchstart", touchstart, { passive: true } as any);
-    canvas.addEventListener("touchmove", touchmove, { passive: true } as any);
+    canvas.addEventListener("touchstart", touchstart, { passive: false } as any);
+    canvas.addEventListener("touchmove", touchmove, { passive: false } as any);
     canvas.addEventListener("touchend", touchend);
 
     window.addEventListener("keydown", keydown);
@@ -702,6 +752,7 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
   return (
     <canvas
       ref={canvasRef}
+      className="touch-none"
       style={{ width: "100%", height: "100%", display: "block" }}
     />
   );

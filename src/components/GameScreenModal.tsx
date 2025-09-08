@@ -52,14 +52,13 @@ interface WinModalProps {
 	isTimed: boolean;
 	timeLeft: number | null;
 	onLevels: () => void;
-	onReplay: () => void;
 	onNext: () => void;
 }
 
-export function WinModal({ open, onOpenChange, levelNumber, isTimed, timeLeft, onLevels, onReplay, onNext }: WinModalProps) {
+export function WinModal({ open, onOpenChange, levelNumber, isTimed, timeLeft, onLevels, onNext }: WinModalProps) {
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent hideClose className="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%]">
+			<DialogContent hideClose className="fixed left-[50%] bottom-4 translate-x-[-50%]">
 				<DialogHeader className="flex flex-row justify-center">
 					<DialogTitle className="pixel-font">LEVEL {String(levelNumber)} COMPLETED!</DialogTitle>
 				</DialogHeader>

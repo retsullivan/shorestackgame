@@ -1,7 +1,7 @@
 {
   "id": 1,
   "name": "BEACH BUILDING",
-  "goal": "Build a stable stack with all the rocks",
+  "goal": "Build a stable stack with all the rocks. Select rocks and drag them to the beach.",
   "theme": "daytime",
   "overlay_theme": "daytime_theme_2.json",
   "challenge":{

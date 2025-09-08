@@ -51,7 +51,6 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
   const happyTimerRef = useRef<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const failAudioRef = useRef<HTMLAudioElement | null>(null);
-  const winOpenTimerRef = useRef<number | null>(null);
 
   const isTimed = levelData.challenge?.type === 'timed' || levelData.challenge?.type === 'timed-height' || levelData.challenge?.type === 'timed_height';
   const initialTrayTotal = useMemo(() => levelData.types.reduce((acc, t) => acc + (t.count || 0), 0), [levelData.types]);
@@ -83,7 +82,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
     // Stop and cleanup audios on level change
     if (audioRef.current) { try { audioRef.current.pause(); } catch {} audioRef.current = null; }
     if (failAudioRef.current) { try { failAudioRef.current.pause(); } catch {} failAudioRef.current = null; }
-    if (winOpenTimerRef.current) { window.clearTimeout(winOpenTimerRef.current); winOpenTimerRef.current = null; }
+    
   }, [startingTime, levelNumber]);
 
   // Reset helper to clear snail animations and timers
@@ -96,7 +95,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
     setStackRightBasePage(null);
     if (climbTimerRef.current) { window.clearTimeout(climbTimerRef.current); climbTimerRef.current = null; }
     if (happyTimerRef.current) { window.clearTimeout(happyTimerRef.current); happyTimerRef.current = null; }
-    if (winOpenTimerRef.current) { window.clearTimeout(winOpenTimerRef.current); winOpenTimerRef.current = null; }
+    
   };
 
   // Timer loop
@@ -136,8 +135,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
         if ((s.stackHeightPx ?? 0) >= target && s.staticCount === s.totalPlaced && s.touchingGroundStatic >= 1) {
           setGameOver(true);
           setPaused(true);
-          if (winOpenTimerRef.current) window.clearTimeout(winOpenTimerRef.current);
-          winOpenTimerRef.current = window.setTimeout(() => setWinOpen(true), 1000) as unknown as number;
+          setWinOpen(true);
           setSnailClimb(true);
           setSnailPhase('glide');
           if (climbTimerRef.current) window.clearTimeout(climbTimerRef.current);
@@ -155,8 +153,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
         // default success
         setGameOver(true);
         setPaused(true);
-        if (winOpenTimerRef.current) window.clearTimeout(winOpenTimerRef.current);
-        winOpenTimerRef.current = window.setTimeout(() => setWinOpen(true), 1000) as unknown as number;
+        setWinOpen(true);
         setSnailClimb(true);
         setSnailPhase('glide');
         if (climbTimerRef.current) window.clearTimeout(climbTimerRef.current);
@@ -174,7 +171,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
 
   const hasWon = snailClimb || snailHappy || winOpen;
 
-  // Music: play theme track during gameplay only; respect settings and pause state
+  // Music: play theme track during gameplay; keep playing through win state until next level
   useEffect(() => {
     if (!musicEnabled) {
       if (audioRef.current) { try { audioRef.current.pause(); } catch {} }
@@ -194,7 +191,9 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
     }
     // Volume is 0..1
     audioRef.current.volume = Math.max(0, Math.min(1, masterVolume / 100));
-    if (!paused && !gameOver && !goalOpen) {
+    // Play during active gameplay OR after a win (until navigation/next level). Never play if fail modal is open.
+    const shouldPlayTheme = ((!paused && !gameOver && !goalOpen) || hasWon) && !failOpen;
+    if (shouldPlayTheme) {
       // Start/resume
       const el = audioRef.current;
       if (el.paused) { el.currentTime = el.currentTime; el.play().catch(() => {}); }
@@ -204,7 +203,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
     return () => {
       // no-op; cleanup happens on level change/unmount
     };
-  }, [themeConfig.musicUrl, paused, gameOver, goalOpen, masterVolume, musicEnabled]);
+  }, [themeConfig.musicUrl, paused, gameOver, goalOpen, hasWon, failOpen, masterVolume, musicEnabled]);
 
   // Switch to lose music when failing
   useEffect(() => {
@@ -314,7 +313,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
         {/* Game Area */}
         <div className="flex-1 relative overflow-hidden">
           {/* Canvas-based gameplay fills the former stacking area bounds */}
-          <div className="absolute left-0 right-0 top-0 bottom-0 pixel-border">
+          <div className="absolute left-0 right-0 top-0 bottom-0 pixel-border z-10">
             <RockStackingGame
               key={levelNumber}
               ref={gameRef}
@@ -326,6 +325,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
               onHorizonChange={(y) => setHorizonPageY(y)}
               onStackTopChange={(x, y) => setStackTopPage({ x, y })}
               onStackRightBaseChange={(x, y) => setStackRightBasePage({ x, y })}
+              islands={themeConfig.islands}
               
             />
             {isMobile && (levelData.challenge?.type === 'height' || levelData.challenge?.type === 'timed-height' || levelData.challenge?.type === 'timed_height') && (
@@ -373,7 +373,6 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
           isTimed={isTimed}
           timeLeft={timeLeft}
           onLevels={() => { setWinOpen(false); setSnailClimb(false); setSnailHappy(false); if (climbTimerRef.current) { window.clearTimeout(climbTimerRef.current); climbTimerRef.current = null; } if (happyTimerRef.current) { window.clearTimeout(happyTimerRef.current); happyTimerRef.current = null; } onNavigate('levels'); }}
-          onReplay={() => { setWinOpen(false); resetSnailAndTimers(); gameRef.current?.reset(); setShowWave(false); setGameOver(false); setPaused(false); setHasInteracted(false); setTimeLeft(startingTime); }}
           onNext={() => {
             gameRef.current?.reset();
             setGameOver(false);
@@ -403,7 +402,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
           <CharacterOverlay
             showWave={showWave}
             horizonPageY={horizonPageY ?? undefined}
-            islands={themeConfig.islands}
+            islands={[]}
             showClimb={snailClimb}
             stackTopPage={stackTopPage ?? undefined}
             rightBasePage={snailPhase === 'glide' ? (stackRightBasePage ?? undefined) : undefined}
