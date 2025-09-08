@@ -4,6 +4,8 @@ import happySnail from '../assets/character_art/happy_snail_cropped_large.gif';
 import scaredSnail from '../assets/character_art/scared_snail_large.gif';
 import sadSnail from '../assets/character_art/sad_snail_large.gif';
 import wave from '../assets/scenery/wave_crash_large.gif';
+import sandDaytime from '../assets/scenery/sand_daytime_large.png';
+import sandSunset from '../assets/scenery/sand_sunset_large.png';
 // Responsive sizing handled via CSS breakpoints
 
 interface CharacterOverlayProps {
@@ -18,6 +20,7 @@ interface CharacterOverlayProps {
   onHappyLoopMs?: (ms: number) => void;
   isScared?: boolean;
   isSad?: boolean;
+  variantTheme?: 'daytime' | 'sunset';
 }
 
 let CACHED_HAPPY_MS: number | null = null;
@@ -84,7 +87,7 @@ async function computeGifLoopDurationMs(url: string): Promise<number> {
   }
 }
 
-export default function CharacterOverlay({ showWave = false, horizonPageY, islands = [], showClimb = false, stackTopPage, rightBasePage, stepTargetPage, showHappy = false, onHappyLoopMs, isScared = false, isSad = false }: CharacterOverlayProps) {
+export default function CharacterOverlay({ showWave = false, horizonPageY, islands = [], showClimb = false, stackTopPage, rightBasePage, stepTargetPage, showHappy = false, onHappyLoopMs, isScared = false, isSad = false, variantTheme = 'daytime' }: CharacterOverlayProps) {
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -99,6 +102,22 @@ export default function CharacterOverlay({ showWave = false, horizonPageY, islan
   }, [onHappyLoopMs]);
   return (
     <>
+      {/* Bottom sand graphic, repeats horizontally */}
+      <div
+        className="z-10 pointer-events-none select-none hidden md:block"
+        style={{
+          position: 'fixed',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: 120,
+          backgroundImage: `url(${variantTheme === 'sunset' ? sandSunset : sandDaytime})`,
+          backgroundRepeat: 'repeat-x',
+          backgroundPosition: 'left bottom',
+          backgroundSize: 'auto 100%',
+          imageRendering: 'pixelated',
+        }}
+      />
       {/* Distant island scenery at horizon */}
       {horizonPageY !== undefined && islands.length > 0 && (
         <div

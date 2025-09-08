@@ -74,8 +74,8 @@ export function SettingsScreen({ onNavigate }: SettingsScreenProps) {
         </div>
 
         {/* Happy snail at bottom center for Settings screen */}
-        <div className="pointer-events-none select-none" style={{ position: 'fixed', left: '50%', bottom: 12, transform: 'translateX(-50%)', zIndex: 30 }}>
-          <img src={happySnail} alt="Happy snail" className="block h-auto" style={{ imageRendering: 'pixelated', width: 120 }} />
+        <div className="pointer-events-none select-none" style={{ position: 'fixed', left: '50%', bottom: 20, transform: 'translateX(-50%)', zIndex: 30 }}>
+          <img src={happySnail} alt="Happy snail" className="block h-auto" style={{ imageRendering: 'pixelated', width: 200 }} />
         </div>
         </div>
       </div>

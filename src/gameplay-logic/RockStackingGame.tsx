@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
 // gsap no longer used for discrete landings; physics loop animates via position updates
 import {
-  Rotation,
-  RockPoly,
-  updatePhysics,
-  toWorldPoly,
-  stableOnMultiple,
+	Rotation,
+	RockPoly,
+	updatePhysics,
+	toWorldPoly,
+	stableOnMultiple,
+	rotatePoint90,
 } from "./physics/physics2d";
 import { RockType } from "./levels/types";
 
@@ -438,6 +439,29 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
 
       drawRocks();
 
+      // Orientation-aware world polygon for UI/height metrics (uses displayRotation when present)
+      function toWorldPolyForHeight(r: RockInstance) {
+        const deg = (r as any).displayRotation !== undefined ? (r as any).displayRotation : r.rotation;
+        const norm = ((deg % 360) + 360) % 360;
+        // Use exact 90° steps path when applicable for perfect anchor alignment
+        if (norm === 0 || norm === 90 || norm === 180 || norm === 270) {
+          const rot = (norm as 0 | 90 | 180 | 270);
+          return r.anchors.map(a => {
+            const rp = rotatePoint90(a, rot);
+            return { x: rp.x + r.position.x, y: rp.y + r.position.y };
+          });
+        }
+        // Fallback: generic rotation for in-between animation frames
+        const rad = (norm * Math.PI) / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+        return r.anchors.map(a => {
+          const rx = a.x * cos - a.y * sin;
+          const ry = a.x * sin + a.y * cos;
+          return { x: rx + r.position.x, y: ry + r.position.y };
+        });
+      }
+
       // Report game state upward each frame if requested
       if (props.onStateChange) {
         const settledStatics = rocks.filter(r => r.isStatic && !r.dragging);
@@ -461,7 +485,7 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
           let bestRock: typeof settledStatics[number] | null = null;
           let rightMostX = -Infinity;
           for (const r of settledStatics) {
-            const pts = toWorldPoly(r);
+            const pts = toWorldPolyForHeight(r);
             const minY = Math.min(...pts.map(p => p.y));
             if (minY < bestMinY) { bestMinY = minY; bestRock = r; }
             const maxX = Math.max(...pts.map(p => p.x));
@@ -470,7 +494,7 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
           const minTopY = bestMinY;
           stackHeightPx = Math.max(0, ground - minTopY);
           if (bestRock) {
-            const pts = toWorldPoly(bestRock);
+            const pts = toWorldPolyForHeight(bestRock);
             const topY = Math.min(...pts.map(p => p.y));
             const nearTop = pts.filter(p => Math.abs(p.y - topY) <= 0.5);
             const avgX = nearTop.length > 0
@@ -485,7 +509,7 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
             }
             // build right-edge hop steps along rocks whose right edge is near global rightMostX
             const TOL_X = 6; // px
-            const candidates = settledStatics.map(rock => ({ pts: toWorldPoly(rock) }));
+            const candidates = settledStatics.map(rock => ({ pts: toWorldPolyForHeight(rock) }));
             const nearRight = candidates
               .map(({ pts }) => ({
                 topY: Math.min(...pts.map(p => p.y)),

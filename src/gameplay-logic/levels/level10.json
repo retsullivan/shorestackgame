@@ -1,7 +1,7 @@
 {
   "id": 10,
   "name": "STACK ATTACK",
-  "goal": "Build a stack taller than your ocean friend before the tide comes in",
+  "goal": "Build a stack taller than your snail friend before the tide comes in",
   "tip":"You can rotate the rocks by pressing the spacebar",
   "theme": "sunset",
   "overlay_theme": "sunset_theme_2.json",

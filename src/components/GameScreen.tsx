@@ -24,6 +24,10 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
   const levelData = useMemo(() => getLevelData(levelNumber), [levelNumber]);
   const overlayThemeName = levelData.overlayTheme ?? levelData.theme;
   const themeConfig = useMemo(() => getTheme(overlayThemeName), [overlayThemeName]);
+  const overlayVariant: 'daytime' | 'sunset' = useMemo(() => {
+    const key = String(overlayThemeName || '').toLowerCase();
+    return key.includes('sunset') ? 'sunset' : 'daytime';
+  }, [overlayThemeName]);
   const { masterVolume, musicEnabled } = useSettings();
   const [paused, setPaused] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
@@ -129,7 +133,8 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
     // height is used directly from s.stackHeightPx when present
     if (!gameOver) {
       if (isHeightLevel) {
-        // When snail isn't visible (mobile), fallback to ~28% of viewport height
+        // Use stricter target so three small unrotated rocks aren't enough by default.
+        // Rotated stacks still count due to orientation-aware height measurement in the game loop.
         const fallback = Math.min(260, Math.round((typeof window !== 'undefined' ? window.innerHeight : 600) * 0.28));
         const target = Math.max(40, Math.round((snailHeightPx > 0 ? snailHeightPx : fallback) * 0.9));
         if ((s.stackHeightPx ?? 0) >= target && s.staticCount === s.totalPlaced && s.touchingGroundStatic >= 1) {
@@ -411,6 +416,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
             onHappyLoopMs={undefined}
             isScared={Boolean(isTimed && timeLeft !== null && timeLeft <= 5 && !snailHappy && !snailClimb)}
             isSad={Boolean((failOpen || showWave || (isTimed && timeLeft !== null && timeLeft <= 0)) && !snailHappy && !snailClimb)}
+            variantTheme={overlayVariant}
           />
         )}
       </div>

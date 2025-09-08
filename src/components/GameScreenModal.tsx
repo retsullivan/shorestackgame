@@ -2,7 +2,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Button } from "./ui/button";
 import { ArrowLeft } from "lucide-react";
 import neutral_snail from "../assets/character_art/pink_snail_still_large.png";
-import happy_snail from "../assets/character_art/happy_snail_cropped_large.gif";
+import happy_snail from "../assets/character_art/pink_snail_still_large.png";
 import sad_snail from "../assets/character_art/sad_snail_still.png";
 
 
@@ -58,7 +58,7 @@ interface WinModalProps {
 export function WinModal({ open, onOpenChange, levelNumber, isTimed, timeLeft, onLevels, onNext }: WinModalProps) {
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent hideClose className="fixed left-[50%] bottom-4 translate-x-[-50%]">
+			<DialogContent hideClose className="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%]">
 				<DialogHeader className="flex flex-row justify-center">
 					<DialogTitle className="pixel-font">LEVEL {String(levelNumber)} COMPLETED!</DialogTitle>
 				</DialogHeader>
