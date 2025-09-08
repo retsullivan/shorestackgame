@@ -10,10 +10,9 @@
     "difficulty": "easy"
   },
   "rocks": [
-    { "id": "rock_large", "count": 1 },
+    { "id": "triangle_large", "count": 1 },
     { "id": "rock_small", "count": 2 },
-    { "id": "trapezoid_small", "count":2 },
-    { "id": "triangle_small", "count": 1 }
+    { "id": "trapezoid_small", "count": 3 }
   ]
 }
 

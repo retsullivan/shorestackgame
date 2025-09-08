@@ -12,10 +12,14 @@ export interface ThemeConfig {
     water: string;
   };
   islands: string[]; // resolved asset URLs
+  // Resolved music track URL for this theme, if provided by theme JSON
+  musicUrl?: string;
 }
 
 // Resolve scenery image filenames to import URLs via Vite glob
 const sceneryUrlMap = (import.meta as any).glob('../../assets/scenery/**.png', { eager: true, as: 'url' }) as Record<string, string>;
+// Resolve music filenames to import URLs via Vite glob
+const musicUrlMap = (import.meta as any).glob('../../assets/music/**.{mp3,ogg,wav}', { eager: true, as: 'url' }) as Record<string, string>;
 
 function getJsonByFilename(filename: string): any | null {
   const entry = Object.entries(themeJsonModules).find(([path]) => path.endsWith(`/${filename}`));
@@ -37,6 +41,14 @@ function resolveIslandFilenames(filenames: string[]): string[] {
       return entry ? entry[1] : '';
     })
     .filter((u) => !!u);
+}
+
+function resolveMusicFilename(filename?: string): string | undefined {
+  if (!filename) return undefined;
+  const rel1 = `../../assets/music/${filename}`;
+  if (musicUrlMap[rel1]) return musicUrlMap[rel1];
+  const entry = Object.entries(musicUrlMap).find(([path]) => path.endsWith(`/${filename}`));
+  return entry ? entry[1] : undefined;
 }
 
 function resolveThemeBase(themeRef: string): any {
@@ -61,6 +73,7 @@ function resolveThemeBase(themeRef: string): any {
 export function getTheme(themeRef: string): ThemeConfig {
   const base = resolveThemeBase(themeRef);
   const islands = resolveIslandFilenames(Object.values(base.islands ?? {}));
+  const musicUrl = resolveMusicFilename(base.music);
   return {
     name: (base.name as string) ?? themeRef,
     colors: {
@@ -68,6 +81,7 @@ export function getTheme(themeRef: string): ThemeConfig {
       water: base.colors?.water ?? '#2f8585',
     },
     islands,
+    musicUrl,
   };
 }
 

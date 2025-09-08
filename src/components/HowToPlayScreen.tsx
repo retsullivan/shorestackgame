@@ -43,7 +43,7 @@ export function HowToPlayScreen({ onNavigate }: HowToPlayScreenProps) {
           </p>
           <p className="pixel-font text-xs md:text-sm text-beach-dark-rock leading-relaxed">
             As their trusted helper, you'll stack colorful rocks to create amazing sculptures 
-            that make your snail friend happy!
+            for your snail friend to climb!
           </p>
         </div>
 

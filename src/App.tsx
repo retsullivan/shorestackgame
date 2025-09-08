@@ -4,6 +4,7 @@ import { SettingsScreen } from './components/SettingsScreen';
 import { HowToPlayScreen } from './components/HowToPlayScreen';
 import { LevelsScreen } from './components/LevelsScreen';
 import { GameScreen } from './components/GameScreen';
+import { SettingsProvider } from './components/SettingsContext';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<string>('welcome');
@@ -36,8 +37,10 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen">
-      {renderScreen()}
-    </div>
+    <SettingsProvider>
+      <div className="min-h-screen">
+        {renderScreen()}
+      </div>
+    </SettingsProvider>
   );
 }

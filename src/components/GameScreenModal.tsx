@@ -11,12 +11,13 @@ interface GoalModalProps {
 	onOpenChange: (open: boolean) => void;
 	levelNumber: number;
 	goalText: string;
+	tip: string;
 	isTimed: boolean;
 	startingTime: number | null;
 	onStart: () => void;
 }
 
-export function GoalModal({ open, onOpenChange, levelNumber, goalText, isTimed, startingTime, onStart }: GoalModalProps) {
+export function GoalModal({ open, onOpenChange, levelNumber, goalText, tip,isTimed, startingTime, onStart }: GoalModalProps) {
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent hideClose className="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%]">
@@ -28,6 +29,8 @@ export function GoalModal({ open, onOpenChange, levelNumber, goalText, isTimed, 
 				</div>
 				<div className="flex flex-col">
 				<div className="pixel-font text-sm">{goalText}</div>
+				{tip && (<br />)}
+				{tip && (<div className="pixel-font text-xs mt-3 mb-3">{tip}</div>)}
 				{isTimed && (
 					<div className="pixel-font text-xs mt-2">You have {startingTime ?? 0}s. The timer starts when you press START.</div>
 				)}

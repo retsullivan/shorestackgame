@@ -12,6 +12,7 @@ import { useIsMobile } from "./ui/use-mobile";
 import CharacterOverlay from "./CharacterOverlay";
 import { GoalModal, WinModal, FailModal, PauseModal } from "./GameScreenModal";
 import { getTheme } from "../gameplay-logic/themes";
+import { useSettings } from "./SettingsContext";
 
 interface GameScreenProps {
   onNavigate: (screen: string) => void;
@@ -23,6 +24,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
   const levelData = useMemo(() => getLevelData(levelNumber), [levelNumber]);
   const overlayThemeName = levelData.overlayTheme ?? levelData.theme;
   const themeConfig = useMemo(() => getTheme(overlayThemeName), [overlayThemeName]);
+  const { masterVolume, musicEnabled } = useSettings();
   const [paused, setPaused] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [winOpen, setWinOpen] = useState(false);
@@ -47,9 +49,11 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
   const gameRef = useRef<RockStackingGameHandle | null>(null);
   const climbTimerRef = useRef<number | null>(null);
   const happyTimerRef = useRef<number | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const failAudioRef = useRef<HTMLAudioElement | null>(null);
   const winOpenTimerRef = useRef<number | null>(null);
 
-  const isTimed = levelData.challenge?.type === 'timed' || levelData.challenge?.type === 'timed-height';
+  const isTimed = levelData.challenge?.type === 'timed' || levelData.challenge?.type === 'timed-height' || levelData.challenge?.type === 'timed_height';
   const initialTrayTotal = useMemo(() => levelData.types.reduce((acc, t) => acc + (t.count || 0), 0), [levelData.types]);
   const startingTime = useMemo(() => {
     if (isTimed) return levelData.challenge?.timeLimit ?? 0;
@@ -76,10 +80,10 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
       window.clearTimeout(happyTimerRef.current);
       happyTimerRef.current = null;
     }
-    if (winOpenTimerRef.current) {
-      window.clearTimeout(winOpenTimerRef.current);
-      winOpenTimerRef.current = null;
-    }
+    // Stop and cleanup audios on level change
+    if (audioRef.current) { try { audioRef.current.pause(); } catch {} audioRef.current = null; }
+    if (failAudioRef.current) { try { failAudioRef.current.pause(); } catch {} failAudioRef.current = null; }
+    if (winOpenTimerRef.current) { window.clearTimeout(winOpenTimerRef.current); winOpenTimerRef.current = null; }
   }, [startingTime, levelNumber]);
 
   // Reset helper to clear snail animations and timers
@@ -117,7 +121,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
   }, [isTimed, timeLeft, paused, gameOver]);
 
   // Completion detection: height or default balance
-  const isHeightLevel = levelData.challenge?.type === 'height' || levelData.challenge?.type === 'timed-height';
+  const isHeightLevel = levelData.challenge?.type === 'height' || levelData.challenge?.type === 'timed-height' || levelData.challenge?.type === 'timed_height';
   const handleStateChange = (s: { totalPlaced: number; staticCount: number; remainingTray: number; touchingGroundStatic: number; stackHeightPx?: number; }) => {
     // Ignore pre-game frames where nothing has been placed yet
     if (s.totalPlaced === 0 && s.remainingTray === initialTrayTotal) return;
@@ -132,9 +136,8 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
         if ((s.stackHeightPx ?? 0) >= target && s.staticCount === s.totalPlaced && s.touchingGroundStatic >= 1) {
           setGameOver(true);
           setPaused(true);
-          // Schedule Win modal exactly 2s after success
           if (winOpenTimerRef.current) window.clearTimeout(winOpenTimerRef.current);
-          winOpenTimerRef.current = window.setTimeout(() => setWinOpen(true), 2000) as unknown as number;
+          winOpenTimerRef.current = window.setTimeout(() => setWinOpen(true), 1000) as unknown as number;
           setSnailClimb(true);
           setSnailPhase('glide');
           if (climbTimerRef.current) window.clearTimeout(climbTimerRef.current);
@@ -152,9 +155,8 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
         // default success
         setGameOver(true);
         setPaused(true);
-        // Schedule Win modal exactly 2s after success
         if (winOpenTimerRef.current) window.clearTimeout(winOpenTimerRef.current);
-        winOpenTimerRef.current = window.setTimeout(() => setWinOpen(true), 2000) as unknown as number;
+        winOpenTimerRef.current = window.setTimeout(() => setWinOpen(true), 1000) as unknown as number;
         setSnailClimb(true);
         setSnailPhase('glide');
         if (climbTimerRef.current) window.clearTimeout(climbTimerRef.current);
@@ -171,6 +173,79 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
   };
 
   const hasWon = snailClimb || snailHappy || winOpen;
+
+  // Music: play theme track during gameplay only; respect settings and pause state
+  useEffect(() => {
+    if (!musicEnabled) {
+      if (audioRef.current) { try { audioRef.current.pause(); } catch {} }
+      if (failAudioRef.current) { try { failAudioRef.current.pause(); } catch {} }
+      return;
+    }
+    // Ensure we have a theme track
+    if (!themeConfig.musicUrl) {
+      if (audioRef.current) { try { audioRef.current.pause(); } catch {} }
+      return;
+    }
+    // If fail music is playing, don't start theme until failure ends/reset
+    if (failAudioRef.current) return;
+    if (!audioRef.current) {
+      audioRef.current = new Audio(themeConfig.musicUrl);
+      audioRef.current.loop = true;
+    }
+    // Volume is 0..1
+    audioRef.current.volume = Math.max(0, Math.min(1, masterVolume / 100));
+    if (!paused && !gameOver && !goalOpen) {
+      // Start/resume
+      const el = audioRef.current;
+      if (el.paused) { el.currentTime = el.currentTime; el.play().catch(() => {}); }
+    } else {
+      try { audioRef.current.pause(); } catch {}
+    }
+    return () => {
+      // no-op; cleanup happens on level change/unmount
+    };
+  }, [themeConfig.musicUrl, paused, gameOver, goalOpen, masterVolume, musicEnabled]);
+
+  // Switch to lose music when failing
+  useEffect(() => {
+    if (!musicEnabled) return;
+    if (!failOpen) return;
+    // pause theme
+    if (audioRef.current) { try { audioRef.current.pause(); } catch {} }
+    // start fail music
+    if (!failAudioRef.current) {
+      // Use Vite glob dynamic import via new Audio with resolved path. We know file lives under assets/music
+      // The loader in themes resolves music, but lose track is fixed name
+      const base = (import.meta as any).glob('../assets/music/**.{mp3,ogg,wav}', { eager: true, as: 'url' }) as Record<string, string>;
+      const direct = base['../assets/music/lose_shorestack.mp3']
+        || Object.entries(base).find(([p]) => p.endsWith('/lose_shorestack.mp3'))?.[1]
+        || Object.entries(base).find(([p]) => p.toLowerCase().includes('lose_shorestack'))?.[1];
+      if (direct) {
+        failAudioRef.current = new Audio(direct);
+        failAudioRef.current.loop = false;
+      }
+    }
+    if (failAudioRef.current) {
+      const el = failAudioRef.current;
+      el.volume = Math.max(0, Math.min(1, masterVolume / 100));
+      el.currentTime = 0;
+      el.play().catch(() => {});
+    }
+    return () => {
+      // when fail modal closes or component unmounts, stop fail music
+      if (failAudioRef.current && !failOpen) { try { failAudioRef.current.pause(); } catch {} failAudioRef.current = null; }
+    };
+  }, [failOpen, masterVolume, musicEnabled]);
+
+  // Stop all music when leaving the level screen (unmount)
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) { try { audioRef.current.pause(); } catch {} }
+      if (failAudioRef.current) { try { failAudioRef.current.pause(); } catch {} }
+      audioRef.current = null;
+      failAudioRef.current = null;
+    };
+  }, []);
 
   return (
     <ScreenBorder>
@@ -253,7 +328,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
               onStackRightBaseChange={(x, y) => setStackRightBasePage({ x, y })}
               
             />
-            {isMobile && (levelData.challenge?.type === 'height' || levelData.challenge?.type === 'timed-height') && (
+            {isMobile && (levelData.challenge?.type === 'height' || levelData.challenge?.type === 'timed-height' || levelData.challenge?.type === 'timed_height') && (
               <div
                 className="pointer-events-none select-none"
                 style={{ position: 'absolute', right: 8, bottom: 20, width: 8, height: `${Math.max(0, Math.round((snailHeightPx > 0 ? snailHeightPx : Math.min(260, Math.round((typeof window !== 'undefined' ? window.innerHeight : 600) * 0.28))) * 0.9))}px`, background: 'linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.55))', boxShadow: '0 0 0 2px rgba(0,0,0,0.15) inset', borderRadius: 2 }}
@@ -285,6 +360,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
           onOpenChange={(open) => { setGoalOpen(open); if (!open) setPaused(false); }}
           levelNumber={levelNumber}
           goalText={levelData.goal ?? ""}
+          tip={levelData.tip ?? ""}
           isTimed={isTimed}
           startingTime={startingTime}
           onStart={() => { setGoalOpen(false); setPaused(false); setHasInteracted(false); setTimeLeft(startingTime); }}

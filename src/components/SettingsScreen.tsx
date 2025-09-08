@@ -1,23 +1,20 @@
 import { Button } from "./ui/button";
-import { Volume2, Music, Gamepad2 } from "lucide-react";
+import { Volume2 } from "lucide-react";
 import { RetroSlider } from "./RetroSlider";
 import { RetroToggle } from "./RetroToggle";
 import { ScreenBorder } from "./ScreenBorder";
 import { Header } from "./Header";
 import { useState } from "react";
+import { useSettings } from "./SettingsContext";
 
 interface SettingsScreenProps {
   onNavigate: (screen: string) => void;
 }
 
 export function SettingsScreen({ onNavigate }: SettingsScreenProps) {
-  const [masterVolume, setMasterVolume] = useState(75);
-  const [musicEnabled, setMusicEnabled] = useState(true);
-  const [soundEffectsEnabled, setSoundEffectsEnabled] = useState(true);
-  const [vibrationEnabled, setVibrationEnabled] = useState(false);
-  const [autoPauseEnabled, setAutoPauseEnabled] = useState(true);
-  const [fullscreenEnabled, setFullscreenEnabled] = useState(false);
-  const [particleEffectsEnabled, setParticleEffectsEnabled] = useState(true);
+  const { masterVolume, setMasterVolume, musicEnabled, setMusicEnabled } = useSettings();
+  const [localMasterVolume, setLocalMasterVolume] = useState(masterVolume);
+  
 
   return (
     <ScreenBorder>
@@ -44,8 +41,8 @@ export function SettingsScreen({ onNavigate }: SettingsScreenProps) {
                 <label className="pixel-font text-xs md:text-sm text-beach-dark-rock">MASTER VOLUME</label>
                 <div className="w-full sm:w-48">
                   <RetroSlider 
-                    value={masterVolume} 
-                    onChange={setMasterVolume} 
+                    value={localMasterVolume} 
+                    onChange={setLocalMasterVolume} 
                     max={100} 
                     step={5} 
                   />
@@ -56,61 +53,18 @@ export function SettingsScreen({ onNavigate }: SettingsScreenProps) {
                 <label className="pixel-font text-xs md:text-sm text-beach-dark-rock">MUSIC</label>
                 <RetroToggle checked={musicEnabled} onChange={setMusicEnabled} />
               </div>
-              
-              <div className="flex items-center justify-between">
-                <label className="pixel-font text-xs md:text-sm text-beach-dark-rock">SOUND EFFECTS</label>
-                <RetroToggle checked={soundEffectsEnabled} onChange={setSoundEffectsEnabled} />
-              </div>
-            </div>
-          </div>
-
-          {/* Controls Settings */}
-          <div className="space-y-4 md:space-y-6">
-            <h2 className="pixel-font text-base md:text-lg text-beach-dark-rock flex items-center">
-              <Gamepad2 className="w-4 h-4 md:w-5 md:h-5 mr-2" strokeWidth={3} />
-              CONTROLS
-            </h2>
-            
-            <div className="space-y-4 pl-2 md:pl-6">
-              <div className="flex items-center justify-between">
-                <label className="pixel-font text-xs md:text-sm text-beach-dark-rock">VIBRATION</label>
-                <RetroToggle checked={vibrationEnabled} onChange={setVibrationEnabled} />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <label className="pixel-font text-xs md:text-sm text-beach-dark-rock">AUTO-PAUSE</label>
-                <RetroToggle checked={autoPauseEnabled} onChange={setAutoPauseEnabled} />
-              </div>
-            </div>
-          </div>
-
-          {/* Display Settings */}
-          <div className="space-y-4 md:space-y-6">
-            <h2 className="pixel-font text-base md:text-lg text-beach-dark-rock flex items-center">
-              <Music className="w-4 h-4 md:w-5 md:h-5 mr-2" strokeWidth={3} />
-              DISPLAY
-            </h2>
-            
-            <div className="space-y-4 pl-2 md:pl-6">
-              <div className="flex items-center justify-between">
-                <label className="pixel-font text-xs md:text-sm text-beach-dark-rock">FULLSCREEN</label>
-                <RetroToggle checked={fullscreenEnabled} onChange={setFullscreenEnabled} />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <label className="pixel-font text-xs md:text-sm text-beach-dark-rock">PARTICLE EFFECTS</label>
-                <RetroToggle checked={particleEffectsEnabled} onChange={setParticleEffectsEnabled} />
-              </div>
             </div>
           </div>
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 pt-4">
-            <Button className="retro-button pixel-font text-beach-foam text-xs px-6 h-10 w-full sm:w-auto">
+            <Button 
+              onClick={() => { setLocalMasterVolume(75); setMusicEnabled(true); }}
+              className="retro-button pixel-font text-beach-foam text-xs px-6 h-10 w-full sm:w-auto">
               RESET TO DEFAULT
             </Button>
             <Button 
-              onClick={() => onNavigate('welcome')}
+              onClick={() => { setMasterVolume(localMasterVolume); onNavigate('welcome'); }}
               className="retro-button pixel-font text-beach-foam text-xs px-6 h-10 w-full sm:w-auto"
             >
               SAVE & EXIT
