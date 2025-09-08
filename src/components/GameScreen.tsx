@@ -37,18 +37,19 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
   const [snailHeightPx] = useState<number>(0);
   const [snailClimb, setSnailClimb] = useState(false);
   const [snailHappy, setSnailHappy] = useState(false);
+  // (unused placeholder retained for potential future loop-based timing)
   const [stackTopPage, setStackTopPage] = useState<{ x: number; y: number } | null>(null);
   const [stackRightBasePage, setStackRightBasePage] = useState<{ x: number; y: number } | null>(null);
-  const [rightEdgeSteps, setRightEdgeSteps] = useState<{ x: number; y: number }[]>([]);
-  const [currentStepTarget, setCurrentStepTarget] = useState<{ x: number; y: number } | null>(null);
+  
   const [snailPhase, setSnailPhase] = useState<'idle' | 'glide' | 'jump' | 'happy'>('idle');
+  const [happyLoopMs, setHappyLoopMs] = useState<number>(400);
   // derived via onStateChange each frame; no need to store unused values
   const isMobile = useIsMobile();
   const gameRef = useRef<RockStackingGameHandle | null>(null);
   const climbTimerRef = useRef<number | null>(null);
   const happyTimerRef = useRef<number | null>(null);
 
-  const isTimed = levelData.challenge?.type === 'timed';
+  const isTimed = levelData.challenge?.type === 'timed' || levelData.challenge?.type === 'timed-height';
   const initialTrayTotal = useMemo(() => levelData.types.reduce((acc, t) => acc + (t.count || 0), 0), [levelData.types]);
   const startingTime = useMemo(() => {
     if (isTimed) return levelData.challenge?.timeLimit ?? 0;
@@ -82,8 +83,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
     setSnailClimb(false);
     setSnailHappy(false);
     setSnailPhase('idle');
-    setCurrentStepTarget(null);
-    setRightEdgeSteps([]);
+    
     setStackTopPage(null);
     setStackRightBasePage(null);
     if (climbTimerRef.current) { window.clearTimeout(climbTimerRef.current); climbTimerRef.current = null; }
@@ -112,7 +112,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
   }, [isTimed, timeLeft, paused, gameOver]);
 
   // Completion detection: height or default balance
-  const isHeightLevel = levelData.challenge?.type === 'height';
+  const isHeightLevel = levelData.challenge?.type === 'height' || levelData.challenge?.type === 'timed-height';
   const handleStateChange = (s: { totalPlaced: number; staticCount: number; remainingTray: number; touchingGroundStatic: number; stackHeightPx?: number; }) => {
     // Ignore pre-game frames where nothing has been placed yet
     if (s.totalPlaced === 0 && s.remainingTray === initialTrayTotal) return;
@@ -131,41 +131,17 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
           setSnailPhase('glide');
           if (climbTimerRef.current) window.clearTimeout(climbTimerRef.current);
           // If we have detailed steps, hop them; else fall back to single glide->jump
-          if (rightEdgeSteps.length >= 2) {
-            const steps = [...rightEdgeSteps];
-            let idx = 0;
-            const hopNext = () => {
-              if (idx >= steps.length - 1) {
-                setSnailPhase('jump');
-                const afterJump = window.setTimeout(() => {
-                  setSnailHappy(true);
-                  setSnailPhase('happy');
-                  if (happyTimerRef.current) window.clearTimeout(happyTimerRef.current);
-                  happyTimerRef.current = window.setTimeout(() => setWinOpen(true), 1000);
-                }, 600);
-                happyTimerRef.current = afterJump as unknown as number;
-                return;
-              }
-              idx++;
-              // allow overlay to aim at the next step by updating a target state
-              setCurrentStepTarget(steps[idx]);
-              climbTimerRef.current = window.setTimeout(hopNext, 450);
-            };
-            // prime target for first step above base
-            setCurrentStepTarget(steps[1]);
-            climbTimerRef.current = window.setTimeout(hopNext, 450);
-          } else {
-            climbTimerRef.current = window.setTimeout(() => {
-              setSnailPhase('jump');
-              const afterJump = window.setTimeout(() => {
-                setSnailHappy(true);
-                setSnailPhase('happy');
-                if (happyTimerRef.current) window.clearTimeout(happyTimerRef.current);
-                happyTimerRef.current = window.setTimeout(() => setWinOpen(true), 1000);
-              }, 1300);
-              happyTimerRef.current = afterJump as unknown as number;
-            }, 900);
-          }
+          // Streamlined: single glide → jump → happy (no incremental hops)
+          climbTimerRef.current = window.setTimeout(() => {
+            setSnailPhase('jump');
+            const afterJump = window.setTimeout(() => {
+              setSnailHappy(true);
+              setSnailPhase('happy');
+              if (happyTimerRef.current) window.clearTimeout(happyTimerRef.current);
+              happyTimerRef.current = window.setTimeout(() => setWinOpen(true), happyLoopMs);
+            }, 600);
+            happyTimerRef.current = afterJump as unknown as number;
+          }, 600);
         }
       } else if (s.remainingTray === 0 && s.staticCount === s.totalPlaced && s.touchingGroundStatic === 1) {
         // default success
@@ -180,13 +156,15 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
             setSnailHappy(true);
             setSnailPhase('happy');
             if (happyTimerRef.current) window.clearTimeout(happyTimerRef.current);
-            happyTimerRef.current = window.setTimeout(() => setWinOpen(true), 1000);
-          }, 1300);
+            happyTimerRef.current = window.setTimeout(() => setWinOpen(true), happyLoopMs);
+          }, 600);
           happyTimerRef.current = afterJump as unknown as number;
-        }, 900);
+        }, 600);
       }
     }
   };
+
+  const hasWon = snailClimb || snailHappy || winOpen;
 
   return (
     <ScreenBorder>
@@ -240,9 +218,11 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
               </div>
             )}
 
-            <Button onClick={() => { gameRef.current?.reset(); resetSnailAndTimers(); setShowWave(false); setGameOver(false); setHasInteracted(false); setTimeLeft(startingTime); }} className="retro-button pixel-font text-beach-dark-rock w-20 h-10 md:w-20 md:h-12 p-2 text-xs">
-              RESET
-            </Button>
+            {!hasWon && (
+              <Button onClick={() => { gameRef.current?.reset(); resetSnailAndTimers(); setShowWave(false); setGameOver(false); setHasInteracted(false); setTimeLeft(startingTime); }} className="retro-button pixel-font text-beach-dark-rock w-20 h-10 md:w-20 md:h-12 p-2 text-xs">
+                RESET
+              </Button>
+            )}
             <Button onClick={() => { setPaused(true); setPauseOpen(true); }} className="retro-button pixel-font text-beach-dark-rock w-10 h-10 md:w-12 md:h-12 p-2 text-xs">
               <Pause className="w-3 h-3 md:w-4 md:h-4" strokeWidth={3} />
             </Button>
@@ -265,9 +245,9 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
               onHorizonChange={(y) => setHorizonPageY(y)}
               onStackTopChange={(x, y) => setStackTopPage({ x, y })}
               onStackRightBaseChange={(x, y) => setStackRightBasePage({ x, y })}
-              onStackRightStepsChange={(steps) => setRightEdgeSteps(steps)}
+              
             />
-            {isMobile && levelData.challenge?.type === 'height' && (
+            {isMobile && (levelData.challenge?.type === 'height' || levelData.challenge?.type === 'timed-height') && (
               <div
                 className="pointer-events-none select-none"
                 style={{ position: 'absolute', right: 8, bottom: 20, width: 8, height: `${Math.max(0, Math.round((snailHeightPx > 0 ? snailHeightPx : Math.min(260, Math.round((typeof window !== 'undefined' ? window.innerHeight : 600) * 0.28))) * 0.9))}px`, background: 'linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.55))', boxShadow: '0 0 0 2px rgba(0,0,0,0.15) inset', borderRadius: 2 }}
@@ -311,7 +291,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
           isTimed={isTimed}
           timeLeft={timeLeft}
           onLevels={() => { setWinOpen(false); setSnailClimb(false); setSnailHappy(false); if (climbTimerRef.current) { window.clearTimeout(climbTimerRef.current); climbTimerRef.current = null; } if (happyTimerRef.current) { window.clearTimeout(happyTimerRef.current); happyTimerRef.current = null; } onNavigate('levels'); }}
-          onReplay={() => { setWinOpen(false); setSnailClimb(false); setSnailHappy(false); if (climbTimerRef.current) { window.clearTimeout(climbTimerRef.current); climbTimerRef.current = null; } if (happyTimerRef.current) { window.clearTimeout(happyTimerRef.current); happyTimerRef.current = null; } gameRef.current?.reset(); setGameOver(false); setPaused(false); setTimeLeft(startingTime); }}
+          onReplay={() => { setWinOpen(false); resetSnailAndTimers(); gameRef.current?.reset(); setShowWave(false); setGameOver(false); setPaused(false); setHasInteracted(false); setTimeLeft(startingTime); }}
           onNext={() => {
             gameRef.current?.reset();
             setGameOver(false);
@@ -345,8 +325,11 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
             showClimb={snailClimb}
             stackTopPage={stackTopPage ?? undefined}
             rightBasePage={snailPhase === 'glide' ? (stackRightBasePage ?? undefined) : undefined}
-            stepTargetPage={snailPhase === 'glide' ? currentStepTarget : (snailPhase === 'jump' ? (stackTopPage ?? null) : null)}
+            stepTargetPage={snailPhase === 'jump' ? (stackTopPage ?? null) : null}
             showHappy={snailHappy}
+            onHappyLoopMs={(ms) => setHappyLoopMs(ms)}
+            isScared={Boolean(isTimed && timeLeft !== null && timeLeft <= 5 && !snailHappy && !snailClimb)}
+            isSad={Boolean((failOpen || showWave || (isTimed && timeLeft !== null && timeLeft <= 0)) && !snailHappy && !snailClimb)}
           />
         )}
       </div>

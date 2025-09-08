@@ -7,7 +7,7 @@
   "challenge":{
     "type": "timed",
     "timeLimit": 30,
-    "difficulty": "medium"
+    "difficulty": "easy"
   },
   "rocks": [
     { "id": "rock_large", "count": 2 },

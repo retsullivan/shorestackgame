@@ -1,6 +1,6 @@
 {
   "id": 6,
-  "name": "WAVE",
+  "name": "WAVE RACE",
   "goal": "Build a stable stack before the tide comes in",
   "theme": "daytime",
   "overlay_theme": "daytime_theme_1.json",
@@ -9,8 +9,7 @@
     { "id": "rock_large", "count": 3 },
     { "id": "rock_small", "count": 3 },
     { "id": "trapezoid_large", "count": 2 },
-    { "id": "triangle_small", "count": 2 },
-    { "id": "isoceles_large", "count": 2 }
+    { "id": "triangle_large", "count": 1 }
   ]
 }
 

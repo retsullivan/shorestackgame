@@ -8,6 +8,9 @@ import level6 from "./level6.json";
 import level7 from "./level7.json";
 import level8 from "./level8.json";
 import level9 from "./level9.json";
+import level10 from "./level10.json";
+import level11 from "./level11.json";
+import level12 from "./level12.json";
 import catalog from "../rock_catalog.json";
 
 function buildTypes(level: LevelJson, cat: RockCatalog): RockType[] {
@@ -31,6 +34,9 @@ export function getLevelData(id: number): LevelData {
     7: level7 as LevelJson,
     8: level8 as LevelJson,
     9: level9 as LevelJson,
+    10: level10 as LevelJson,
+    11: level11 as LevelJson,
+    12: level12 as LevelJson
   };
   const lvl = lvls[id] ?? (level1 as LevelJson);
   const types = buildTypes(lvl, catalog as RockCatalog);
@@ -48,7 +54,7 @@ export function getLevelData(id: number): LevelData {
 
 // Return raw LevelJson objects for listing/metadata purposes (e.g., levels screen)
 export function listLevels(): LevelJson[] {
-  return [level1 as LevelJson, level2 as LevelJson, level3 as LevelJson, level4 as LevelJson, level5 as LevelJson, level6 as LevelJson, level7 as LevelJson, level8 as LevelJson, level9 as LevelJson];
+  return [level1 as LevelJson, level2 as LevelJson, level3 as LevelJson, level4 as LevelJson, level5 as LevelJson, level6 as LevelJson, level7 as LevelJson, level8 as LevelJson, level9 as LevelJson, level10 as LevelJson, level11 as LevelJson, level12 as LevelJson];
 }
 
 

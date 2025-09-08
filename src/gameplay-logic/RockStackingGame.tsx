@@ -217,8 +217,8 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
           const srcH = t.crop?.h ?? entry.crop.h;
           // Base scale to fit within anchor bounds in the tray
           let scale = Math.min(aw / srcW, ah / srcH) * TRAY_OVERSCAN;
-          // Nudge down large rectangle rock so it fits comfortably in the tray
-          if (sprite === "rock" && size === "large") {
+          // Apply the same tray scaling to wide large shapes so they fit comfortably
+          if (size === "large" && (sprite === "rock" || sprite === "trapezoid" || sprite === "triangle")) {
             scale *= 0.75;
           }
           // Make all small-sized rocks appear smaller in the tray

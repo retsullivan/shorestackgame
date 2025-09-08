@@ -2,7 +2,9 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Button } from "./ui/button";
 import { ArrowLeft } from "lucide-react";
 import neutral_snail from "../assets/character_art/pink_snail_still_large.png";
-import happy_snail from "../assets/character_art/pink_snail_large.gif";
+import happy_snail from "../assets/character_art/happy_snail_cropped_large.gif";
+import sad_snail from "../assets/character_art/sad_snail_still.png";
+
 
 interface GoalModalProps {
 	open: boolean;
@@ -71,7 +73,6 @@ export function WinModal({ open, onOpenChange, levelNumber, isTimed, timeLeft, o
 							</Button>
 						</div>
 						<div className="flex gap-2">
-							<Button className="retro-button pixel-font text-beach-foam w-28 h-12 md:w-32 md:h-14 text-xs md:text-sm" onClick={onReplay}>REPLAY</Button>
 							<Button className="retro-button pixel-font text-beach-foam w-28 h-12 md:w-32 md:h-14 text-xs md:text-sm" onClick={onNext}>NEXT</Button>
 						</div>
 					</div>
@@ -97,7 +98,7 @@ export function FailModal({ open, onOpenChange, isTimed, onLevels, onRetry }: Fa
 					<DialogTitle className="pixel-font">TRY AGAIN?</DialogTitle>
 				</DialogHeader>
 				<div className="flex flex-row justify-center">
-					<img src={neutral_snail} alt="Snail" className="center w-16 md:w-28 pointer-events-none select-none" style={{ imageRendering: 'pixelated' }} />
+					<img src={sad_snail} alt="Snail" className="center w-16 md:w-28 pointer-events-none select-none" style={{ imageRendering: 'pixelated' }} />
 				</div>
 				<div className="pixel-font text-sm">{isTimed ? `Time's up!` : `Challenge not met.`}</div>
 				<DialogFooter className="w-full">
