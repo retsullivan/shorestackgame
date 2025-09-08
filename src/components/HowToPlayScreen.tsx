@@ -1,5 +1,5 @@
 import { Button } from "./ui/button";
-import { ArrowLeft, Target, Zap, Star, Trophy, MousePointer, RotateCcw, Pause } from "lucide-react";
+import { ArrowLeft, Target, Zap, Star, Trophy, MousePointer, RotateCcw, Pause, Clock } from "lucide-react";
 import { ScreenBorder } from "./ScreenBorder";
 import { Header } from "./Header";
 import { useIsMobile } from "./ui/use-mobile";
@@ -15,22 +15,12 @@ export function HowToPlayScreen({ onNavigate }: HowToPlayScreenProps) {
     {
       icon: Target,
       title: "STACK ROCKS",
-      description: "Move and drag rocks to build towers. Each creature has favorite rock patterns!"
+      description: "Move and drag rocks to build towers. Make sure they're balanced -- Wobbly stacks might tumble into the tide."
     },
-    {
-      icon: Zap,
-      title: "MATCH COLORS",
-      description: "Sea creatures love colorful stacks! Match their preferred rock colors for bonus points."
-    },
-    {
-      icon: Star,
-      title: "BALANCE IS KEY",
-      description: "Keep your towers steady! Wobbly stacks might tumble into the tide."
-    },
-    {
+    {    
       icon: Trophy,
       title: "COMPLETE GOALS",
-      description: "Each level has different objectives. Build high, build wide, or build smart!"
+      description: "Each level has different objectives. Build high, build fast, or build both!"
     }
   ];
 
@@ -48,12 +38,12 @@ export function HowToPlayScreen({ onNavigate }: HowToPlayScreenProps) {
         <div className="bg-beach-foam p-6 md:p-6 mb-8 md:mb-8 pixel-border rounded-lg">
           <h2 className="pixel-font text-base md:text-lg text-beach-dark-rock mb-3 md:mb-4">THE STORY</h2>
           <p className="pixel-font text-xs md:text-sm text-beach-dark-rock leading-relaxed mb-3 md:mb-4">
-            Welcome to the magical shores of the Pacific Northwest! Here, playful sea creatures 
+            Welcome to the magical shores of the Pacific Northwest! Here, playful snails 
             spend their days building beautiful rock towers along the rocky beaches.
           </p>
           <p className="pixel-font text-xs md:text-sm text-beach-dark-rock leading-relaxed">
             As their trusted helper, you'll stack colorful rocks to create amazing sculptures 
-            that make each creature happy. Every stack tells a story!
+            that make your snail friend happy!
           </p>
         </div>
 
