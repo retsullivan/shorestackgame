@@ -5,7 +5,7 @@
   "tip":"You can rotate the rocks by pressing the spacebar",
   "theme": "sunset",
   "overlay_theme": "sunset_theme_2.json",
-  "challenge": { "type": "timed_height", "timeLimit": 7, "difficulty": "expert" },
+  "challenge": { "type": "timed_height", "timeLimit": 5, "difficulty": "expert" },
   "rocks": [
     { "id": "rock_small", "count": 1 },
     { "id": "trapezoid_small", "count": 3 },

@@ -544,7 +544,12 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
   // intersectsAny unused with continuous physics; broad-phase handled implicitly in updatePhysics
 
   function floorY() {
-    return Math.max(0, dimsRef.current.cssHeight - 20);
+    const h = dimsRef.current.cssHeight;
+    const w = dimsRef.current.cssWidth;
+    // On smaller screens, increase the bottom sand band so it remains visible
+    const smallScreen = (w <= 480 || h <= 640);
+    const sandHeight = smallScreen ? 32 : 20;
+    return Math.max(0, h - sandHeight);
   }
 
   // computeRestingY no longer used; physics loop decides resting dynamically

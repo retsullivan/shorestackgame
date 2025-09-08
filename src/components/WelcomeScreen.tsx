@@ -38,7 +38,7 @@ export function WelcomeScreen({ onNavigate }: WelcomeScreenProps) {
             onClick={() => onNavigate('levels')}
             className="retro-button pixel-font text-beach-foam w-full max-w-xs md:max-w-64 h-12 md:h-14 text-xs md:text-sm"
           >
-            START GAME
+            LEVELS
           </Button>
           
           <Button

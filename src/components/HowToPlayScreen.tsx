@@ -15,7 +15,7 @@ export function HowToPlayScreen({ onNavigate }: HowToPlayScreenProps) {
     {
       icon: Target,
       title: "STACK ROCKS",
-      description: "Move and drag rocks to build towers. Make sure they're balanced -- Wobbly stacks might tumble into the tide."
+      description: "Move and drag rocks to build towers. Make sure they're balanced - wobbly stacks might tumble into the tide."
     },
     {    
       icon: Trophy,
@@ -39,7 +39,7 @@ export function HowToPlayScreen({ onNavigate }: HowToPlayScreenProps) {
           <h2 className="pixel-font text-base md:text-lg text-beach-dark-rock mb-3 md:mb-4">THE STORY</h2>
           <p className="pixel-font text-xs md:text-sm text-beach-dark-rock leading-relaxed mb-3 md:mb-4">
             Welcome to the magical shores of the Pacific Northwest! Here, playful snails 
-            spend their days building beautiful rock towers along the rocky beaches.
+            spend their days building beautiful towers along the rocky beaches.
           </p>
           <p className="pixel-font text-xs md:text-sm text-beach-dark-rock leading-relaxed">
             As their trusted helper, you'll stack colorful rocks to create amazing sculptures 

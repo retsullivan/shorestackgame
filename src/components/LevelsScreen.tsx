@@ -73,28 +73,6 @@ export function LevelsScreen({ onNavigate, onStartLevel }: LevelsScreenProps) {
                 </Badge>
               </div>
 
-              {/* Stars */}
-              <div className="flex justify-center space-x-1">
-                {Array.from({ length: 3 }).map((_, starIndex) => (
-                  <Star
-                    key={starIndex}
-                    className={`w-3 h-3 md:w-4 md:h-4 ${
-                      starIndex < level.stars
-                        ? 'text-yellow-400 fill-yellow-400'
-                        : 'text-beach-rock'
-                    }`}
-                    strokeWidth={3}
-                  />
-                ))}
-              </div>
-
-              {/* Decorative creatures for unlocked levels */}
-              {level.unlocked && (
-                <div className="flex justify-center mt-2 md:mt-4 space-x-1 md:space-x-2">
-                  <div className="w-2 h-2 md:w-3 md:h-3 bg-beach-coral rounded-full pixel-border"></div>
-                  <div className="w-2 h-2 md:w-3 md:h-3 bg-beach-seaweed rounded-full pixel-border"></div>
-                </div>
-              )}
             </div>
           ))}
         </div>
