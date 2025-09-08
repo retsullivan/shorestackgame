@@ -253,7 +253,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
 
   return (
     <ScreenBorder>
-      <div className="min-h-[100svh] md:min-h-screen flex flex-col" style={{ background: `linear-gradient(180deg, ${themeConfig.colors.sky} 0%, ${themeConfig.colors.sky} 60%, ${themeConfig.colors.water} 100%)` }}>
+      <div className="min-h-screen flex flex-col" style={{ background: `linear-gradient(180deg, ${themeConfig.colors.sky} 0%, ${themeConfig.colors.sky} 60%, ${themeConfig.colors.water} 100%)` }}>
         {/* Game Header */}
         <div className="flex flex-col px-3 py-2 md:p-4 gap-2 sm:gap-0">
           <div className="flex items-center space-x-2 md:space-x-8">
@@ -274,7 +274,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
                 </PopoverTrigger>
                 <PopoverContent align="start" className="w-[200px]">
                   <div className="pixel-font text-xs text-beach-dark-rock">
-                    Drag and drops rocks in a stack below. To rotate tap with a second finger.
+                    Drag rocks to build a stack. While dragging, tap with a second finger to rotate.
                   </div>
                 </PopoverContent>
               </Popover>

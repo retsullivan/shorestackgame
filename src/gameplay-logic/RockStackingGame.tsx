@@ -64,8 +64,8 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
   const SPRITE_OVERSCAN = 1.3; // world draw
   const TRAY_OVERSCAN = 1.04;   // tray preview
   const VISUAL_STACK_NUDGE_Y = 1.5; // px, render-only shift downward
-  const dragRef = useRef<{ rock: RockInstance | null; offX: number; offY: number; primaryTouchId: number | null }>(
-    { rock: null, offX: 0, offY: 0, primaryTouchId: null }
+  const dragRef = useRef<{ rock: RockInstance | null; offX: number; offY: number; secondFingerDown: boolean; primaryTouchId: number | null }>(
+    { rock: null, offX: 0, offY: 0, secondFingerDown: false, primaryTouchId: null }
   );
 
   useEffect(() => {
@@ -544,12 +544,7 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
   // intersectsAny unused with continuous physics; broad-phase handled implicitly in updatePhysics
 
   function floorY() {
-    const h = dimsRef.current.cssHeight;
-    const w = dimsRef.current.cssWidth;
-    // On smaller screens, increase the bottom sand band so it remains visible
-    const smallScreen = (w <= 480 || h <= 640);
-    const sandHeight = smallScreen ? 32 : 20;
-    return Math.max(0, h - sandHeight);
+    return Math.max(0, dimsRef.current.cssHeight - 20);
   }
 
   // computeRestingY no longer used; physics loop decides resting dynamically
@@ -649,7 +644,7 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
     const canvas = canvasRef.current!;
     if (!canvas || types.length === 0) return;
 
-    const onDown = (clientX: number, clientY: number, touchId?: number) => {
+    const onDown = (clientX: number, clientY: number) => {
       if (pausedRef.current) return;
       const pos = screenToCanvasPos(canvas, clientX, clientY);
       if (pos.y < TRAY_H) {
@@ -662,7 +657,7 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
             setTypes((ts) => ts.map((t, i) => (i === idx ? { ...t, count: t.count - 1 } : t)));
             dragRef.current.rock = inst;
             dragRef.current.offX = 0; dragRef.current.offY = 0;
-            dragRef.current.primaryTouchId = touchId ?? null;
+            dragRef.current.secondFingerDown = false;
             return;
           }
         }
@@ -680,7 +675,7 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
         dragRef.current.rock = pick;
         dragRef.current.offX = pos.x - pick.position.x;
         dragRef.current.offY = pos.y - pick.position.y;
-        dragRef.current.primaryTouchId = touchId ?? null;
+        dragRef.current.secondFingerDown = false;
         if (wasStatic) {
           // Remove as support and trigger cascade re-evaluation
           pick.isStatic = false;
@@ -715,69 +710,74 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
       }
 
       dragRef.current.rock = null;
-      dragRef.current.primaryTouchId = null;
+      dragRef.current.secondFingerDown = false;
     };
 
-    const mousedown = (e: MouseEvent) => onDown(e.clientX, e.clientY, undefined);
+    const mousedown = (e: MouseEvent) => onDown(e.clientX, e.clientY);
     const mousemove = (e: MouseEvent) => onMove(e.clientX, e.clientY);
     const mouseup = (e: MouseEvent) => onUp(e.clientX, e.clientY);
 
     const touchstart = (e: TouchEvent) => {
       e.preventDefault();
-      // If not dragging yet, start drag with the first changed touch
-      if (!dragRef.current.rock && e.changedTouches.length > 0) {
-        const t = e.changedTouches[0];
-        onDown(t.clientX, t.clientY, t.identifier);
+      // If already dragging, interpret a second finger as rotate gesture
+      if (dragRef.current.rock) {
+        if (e.touches.length === 2 && !dragRef.current.secondFingerDown) {
+          rotateDragging(90);
+          dragRef.current.secondFingerDown = true;
+        }
         return;
       }
-      // If dragging and a second finger starts, rotate once
-      if (dragRef.current.rock && e.touches.length >= 2) {
-        // Identify if any changed touch is not the primary
-        const primary = dragRef.current.primaryTouchId;
-        for (let i = 0; i < e.changedTouches.length; i++) {
-          const t = e.changedTouches.item(i)!;
-          if (primary === null || t.identifier !== primary) {
-            rotateDragging(90);
-            break;
-          }
-        }
-      }
+      // Start a new drag with the first touch as primary
+      const primary = e.touches[0];
+      dragRef.current.primaryTouchId = primary.identifier;
+      dragRef.current.secondFingerDown = false;
+      onDown(primary.clientX, primary.clientY);
     };
     const touchmove = (e: TouchEvent) => {
       e.preventDefault();
-      // Move only with primary touch; fallback to first if unknown
-      const primary = dragRef.current.primaryTouchId;
-      let target: Touch | null = null;
-      for (let i = 0; i < e.touches.length; i++) {
-        const t = e.touches.item(i)!;
-        if (primary === null || t.identifier === primary) { target = t; break; }
+      const dr = dragRef.current;
+      if (!dr.rock) return;
+      // Track the primary touch for consistent dragging when fingers change order
+      let t: Touch | null = null;
+      if (dr.primaryTouchId != null) {
+        for (let i = 0; i < e.touches.length; i++) {
+          if (e.touches[i].identifier === dr.primaryTouchId) { t = e.touches[i]; break; }
+        }
       }
-      if (!target && e.touches.length > 0) target = e.touches.item(0);
-      if (target) onMove(target.clientX, target.clientY);
+      if (!t) t = e.touches[0] ?? null;
+      if (!t) return;
+      onMove(t.clientX, t.clientY);
     };
     const touchend = (e: TouchEvent) => {
       e.preventDefault();
-      const primary = dragRef.current.primaryTouchId;
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        const t = e.changedTouches.item(i)!;
-        if (primary !== null && t.identifier === primary) {
-          onUp(t.clientX, t.clientY);
-          dragRef.current.primaryTouchId = null;
-          break;
+      const dr = dragRef.current;
+      if (!dr.rock) return;
+      // If any touches remain, keep dragging; rotate flag resets when second finger lifts
+      if (e.touches.length > 0) {
+        if (dr.secondFingerDown && e.touches.length < 2) dr.secondFingerDown = false;
+        // If primary touch ended, switch to another active touch seamlessly
+        const endedIds = new Set<number>();
+        for (let i = 0; i < e.changedTouches.length; i++) endedIds.add(e.changedTouches[i].identifier);
+        if (dr.primaryTouchId != null && endedIds.has(dr.primaryTouchId)) {
+          const newPrimary = e.touches[0];
+          dr.primaryTouchId = newPrimary.identifier;
+          const pos = screenToCanvasPos(canvas, newPrimary.clientX, newPrimary.clientY);
+          if (dr.rock) {
+            dr.offX = pos.x - dr.rock.position.x;
+            dr.offY = pos.y - dr.rock.position.y;
+          }
         }
+        return;
       }
+      // No touches remain: drop the rock
+      const t = e.changedTouches[0];
+      dragRef.current.primaryTouchId = null;
+      onUp(t.clientX, t.clientY);
     };
     const touchcancel = (e: TouchEvent) => {
       e.preventDefault();
-      const primary = dragRef.current.primaryTouchId;
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        const t = e.changedTouches.item(i)!;
-        if (primary !== null && t.identifier === primary) {
-          onUp(t.clientX, t.clientY);
-          dragRef.current.primaryTouchId = null;
-          break;
-        }
-      }
+      // Treat as touchend
+      touchend(e);
     };
 
     const keydown = (e: KeyboardEvent) => {

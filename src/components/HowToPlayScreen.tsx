@@ -1,5 +1,5 @@
 import { Button } from "./ui/button";
-import { ArrowLeft, Target, Zap, Star, Trophy, MousePointer, RotateCcw, Pause, Clock } from "lucide-react";
+import { ArrowLeft, Target, Trophy, MousePointer, RotateCcw, Pause } from "lucide-react";
 import { ScreenBorder } from "./ScreenBorder";
 import { Header } from "./Header";
 import { useIsMobile } from "./ui/use-mobile";
@@ -82,7 +82,7 @@ export function HowToPlayScreen({ onNavigate }: HowToPlayScreenProps) {
                   <div className="w-7 h-7 md:w-8 md:h-8 bg-beach-water pixel-border mr-3 flex items-center justify-center">
                     <RotateCcw className="w-3 h-3 text-beach-foam" strokeWidth={3} />
                   </div>
-                  <span className="pixel-font text-xs text-beach-dark-rock">TAP WITH SECOND FINGER TO ROTATE</span>
+                  <span className="pixel-font text-xs text-beach-dark-rock">WHILE DRAGGING, TAP WITH SECOND FINGER TO ROTATE</span>
                 </div>
               </div>
               <div className="space-y-3">
