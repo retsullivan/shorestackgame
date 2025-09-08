@@ -64,8 +64,8 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
   const SPRITE_OVERSCAN = 1.3; // world draw
   const TRAY_OVERSCAN = 1.04;   // tray preview
   const VISUAL_STACK_NUDGE_Y = 1.5; // px, render-only shift downward
-  const dragRef = useRef<{ rock: RockInstance | null; offX: number; offY: number; secondFingerDown: boolean }>(
-    { rock: null, offX: 0, offY: 0, secondFingerDown: false }
+  const dragRef = useRef<{ rock: RockInstance | null; offX: number; offY: number; primaryTouchId: number | null }>(
+    { rock: null, offX: 0, offY: 0, primaryTouchId: null }
   );
 
   useEffect(() => {
@@ -649,7 +649,7 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
     const canvas = canvasRef.current!;
     if (!canvas || types.length === 0) return;
 
-    const onDown = (clientX: number, clientY: number, touchCount = 1) => {
+    const onDown = (clientX: number, clientY: number, touchId?: number) => {
       if (pausedRef.current) return;
       const pos = screenToCanvasPos(canvas, clientX, clientY);
       if (pos.y < TRAY_H) {
@@ -662,7 +662,7 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
             setTypes((ts) => ts.map((t, i) => (i === idx ? { ...t, count: t.count - 1 } : t)));
             dragRef.current.rock = inst;
             dragRef.current.offX = 0; dragRef.current.offY = 0;
-            dragRef.current.secondFingerDown = touchCount >= 2;
+            dragRef.current.primaryTouchId = touchId ?? null;
             return;
           }
         }
@@ -680,7 +680,7 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
         dragRef.current.rock = pick;
         dragRef.current.offX = pos.x - pick.position.x;
         dragRef.current.offY = pos.y - pick.position.y;
-        dragRef.current.secondFingerDown = touchCount >= 2;
+        dragRef.current.primaryTouchId = touchId ?? null;
         if (wasStatic) {
           // Remove as support and trigger cascade re-evaluation
           pick.isStatic = false;
@@ -715,29 +715,69 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
       }
 
       dragRef.current.rock = null;
-      dragRef.current.secondFingerDown = false;
+      dragRef.current.primaryTouchId = null;
     };
 
-    const mousedown = (e: MouseEvent) => onDown(e.clientX, e.clientY, 1);
+    const mousedown = (e: MouseEvent) => onDown(e.clientX, e.clientY, undefined);
     const mousemove = (e: MouseEvent) => onMove(e.clientX, e.clientY);
     const mouseup = (e: MouseEvent) => onUp(e.clientX, e.clientY);
 
     const touchstart = (e: TouchEvent) => {
       e.preventDefault();
-      onDown(e.touches[0].clientX, e.touches[0].clientY, e.touches.length);
-      if (dragRef.current.rock && e.touches.length === 2 && !dragRef.current.secondFingerDown) {
-        rotateDragging(90);
-        dragRef.current.secondFingerDown = true;
+      // If not dragging yet, start drag with the first changed touch
+      if (!dragRef.current.rock && e.changedTouches.length > 0) {
+        const t = e.changedTouches[0];
+        onDown(t.clientX, t.clientY, t.identifier);
+        return;
+      }
+      // If dragging and a second finger starts, rotate once
+      if (dragRef.current.rock && e.touches.length >= 2) {
+        // Identify if any changed touch is not the primary
+        const primary = dragRef.current.primaryTouchId;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const t = e.changedTouches.item(i)!;
+          if (primary === null || t.identifier !== primary) {
+            rotateDragging(90);
+            break;
+          }
+        }
       }
     };
     const touchmove = (e: TouchEvent) => {
       e.preventDefault();
-      onMove(e.touches[0].clientX, e.touches[0].clientY);
+      // Move only with primary touch; fallback to first if unknown
+      const primary = dragRef.current.primaryTouchId;
+      let target: Touch | null = null;
+      for (let i = 0; i < e.touches.length; i++) {
+        const t = e.touches.item(i)!;
+        if (primary === null || t.identifier === primary) { target = t; break; }
+      }
+      if (!target && e.touches.length > 0) target = e.touches.item(0);
+      if (target) onMove(target.clientX, target.clientY);
     };
     const touchend = (e: TouchEvent) => {
       e.preventDefault();
-      const t = e.changedTouches[0];
-      onUp(t.clientX, t.clientY);
+      const primary = dragRef.current.primaryTouchId;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches.item(i)!;
+        if (primary !== null && t.identifier === primary) {
+          onUp(t.clientX, t.clientY);
+          dragRef.current.primaryTouchId = null;
+          break;
+        }
+      }
+    };
+    const touchcancel = (e: TouchEvent) => {
+      e.preventDefault();
+      const primary = dragRef.current.primaryTouchId;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches.item(i)!;
+        if (primary !== null && t.identifier === primary) {
+          onUp(t.clientX, t.clientY);
+          dragRef.current.primaryTouchId = null;
+          break;
+        }
+      }
     };
 
     const keydown = (e: KeyboardEvent) => {
@@ -762,6 +802,7 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
     canvas.addEventListener("touchstart", touchstart, { passive: false } as any);
     canvas.addEventListener("touchmove", touchmove, { passive: false } as any);
     canvas.addEventListener("touchend", touchend);
+    canvas.addEventListener("touchcancel", touchcancel);
 
     window.addEventListener("keydown", keydown);
 
@@ -773,6 +814,7 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
       canvas.removeEventListener("touchstart", touchstart);
       canvas.removeEventListener("touchmove", touchmove);
       canvas.removeEventListener("touchend", touchend);
+      canvas.removeEventListener("touchcancel", touchcancel);
 
       window.removeEventListener("keydown", keydown);
     };
