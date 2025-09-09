@@ -5,6 +5,7 @@ import { HowToPlayScreen } from './components/HowToPlayScreen';
 import { LevelsScreen } from './components/LevelsScreen';
 import { GameScreen } from './components/GameScreen';
 import { SettingsProvider } from './components/SettingsContext';
+import { SnailDanceScreen } from './components/SnailDanceScreen';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<string>('welcome');
@@ -31,6 +32,8 @@ export default function App() {
         return <LevelsScreen onNavigate={handleNavigate} onStartLevel={handleStartLevel} />;
       case 'game':
         return <GameScreen onNavigate={handleNavigate} levelNumber={selectedLevel} onStartLevel={handleStartLevel} />;
+      case 'snaildance':
+        return <SnailDanceScreen onNavigate={handleNavigate} />;
       default:
         return <WelcomeScreen onNavigate={handleNavigate} />;
     }

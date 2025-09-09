@@ -54,6 +54,14 @@ export function WelcomeScreen({ onNavigate }: WelcomeScreenProps) {
           >
             SETTINGS
           </Button>
+
+          {/* Disabled for now */}
+          {/* <Button
+            onClick={() => onNavigate('snaildance')}
+            className="retro-button pixel-font text-beach-foam w-full max-w-xs md:max-w-64 h-12 md:h-14 text-xs md:text-sm"
+          >
+            SNAIL DANCE
+          </Button> */}
         </div>
         
        
