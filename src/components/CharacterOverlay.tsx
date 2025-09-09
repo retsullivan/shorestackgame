@@ -109,6 +109,21 @@ export default function CharacterOverlay({ showWave = false, horizonPageY, islan
           position: 'fixed',
           left: 0,
           right: 0,
+          bottom:45,
+          height: 60,
+          backgroundImage: `url(${variantTheme === 'sunset' ? sandSunset : sandDaytime})`,
+          backgroundRepeat: 'repeat-x',
+          backgroundPosition: 'left bottom',
+          backgroundSize: 'auto 100%',
+          imageRendering: 'pixelated',
+        }}
+      />
+      <div
+        className="z-10 pointer-events-none select-none hidden md:block"
+        style={{
+          position: 'fixed',
+          left: 0,
+          right: 0,
           bottom: 0,
           height: 120,
           backgroundImage: `url(${variantTheme === 'sunset' ? sandSunset : sandDaytime})`,
@@ -118,6 +133,7 @@ export default function CharacterOverlay({ showWave = false, horizonPageY, islan
           imageRendering: 'pixelated',
         }}
       />
+      
       {/* Distant island scenery at horizon */}
       {horizonPageY !== undefined && islands.length > 0 && (
         <div
