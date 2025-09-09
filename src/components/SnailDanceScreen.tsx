@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ScreenBorder } from "./ScreenBorder";
 import { Header } from "./Header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Button } from "./ui/button";
+// import { Button } from "./ui/button";
 import { RotateCcw } from "lucide-react";
 import { getTheme } from "../gameplay-logic/themes";
 import { useSettings } from "./SettingsContext";
@@ -57,6 +57,7 @@ export function SnailDanceScreen({ onNavigate }: SnailDanceScreenProps) {
   // Incrementing z-order index: earlier items are behind later items
   const spawnIndexRef = useRef<number>(0);
   const defaultSnailIdRef = useRef<string | null>(null);
+  const defaultSnailCenteredRef = useRef<boolean>(false);
 
   // Utility: remove item by id
   const removeItemById = (id: string) => setPlacedItems((prev) => prev.filter((p) => p.id !== id));
@@ -330,8 +331,8 @@ export function SnailDanceScreen({ onNavigate }: SnailDanceScreenProps) {
       const rect = containerRef.current.getBoundingClientRect();
       const id = `snail-default-${Date.now()}`;
       defaultSnailIdRef.current = id;
-      const x = Math.max(0, Math.round(rect.width * 0.75));
-      const y = Math.max(0, Math.round(rect.height * 0.65));
+      const x = Math.max(0, Math.round(rect.width * 0.5));
+      const y = Math.max(0, Math.round(rect.height * 0.5));
       const z = spawnIndexRef.current;
       spawnIndexRef.current = spawnIndexRef.current + 1;
       setPlacedItems((prev) => prev.concat({ id, url: imageSrc, kind: 'snail', x, y, z }));
@@ -357,9 +358,9 @@ export function SnailDanceScreen({ onNavigate }: SnailDanceScreenProps) {
         {/* Content Area (no rocks) */}
         <div className="flex-1 relative overflow-hidden flex items-center justify-center">
           {/* Top Tray + Dropdowns */}
-          <div className="absolute left-0 right-0 top-16 z-20 px-2 md:px-3">
-            <div className="w-full flex flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-3">
-              <div ref={trayRef} className="retro-button rounded-md md:rounded-lg flex-1 whitespace-nowrap py-1 md:py-2 px-2 min-h-[44px] " style={{ transform: 'none', boxShadow: '4px 4px 0px #2c1810, inset 0 0 0 2px #f7f3e9', backdropFilter: 'blur(2px)' }}>
+          <div className="absolute left-0 right-0 top-8 md:top-6 z-20 px-2 md:px-3">
+            <div className="w-full flex flex-col gap-2 md:grid md:grid-cols-1 md:items-center md:gap-3 lg:gap-4">
+              <div ref={trayRef} className="retro-button rounded-md md:rounded-lg whitespace-nowrap py-1 md:py-2 px-2 min-h-[44px] md:col-start-1 " style={{ transform: 'none', boxShadow: '4px 4px 0px #2c1810, inset 0 0 0 2px #f7f3e9', backdropFilter: 'blur(2px)' }}>
                 <div className="w-full flex items-center gap-2">
                   <div className="flex-1 overflow-x-auto overflow-y-hidden touch-pan-x" style={{ WebkitOverflowScrolling: 'touch' }}>
                     <div className="inline-flex gap-2 items-center">
@@ -391,33 +392,7 @@ export function SnailDanceScreen({ onNavigate }: SnailDanceScreenProps) {
                   </div>
                 </div>
               </div>
-              <div className="flex flex-row flex-wrap items-center gap-2 md:gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="pixel-font text-xs md:text-sm text-beach-foam">Emotion</span>
-                  <Select value={emotion} onValueChange={(v) => setEmotion(v as Emotion)}>
-                    <SelectTrigger className="w-28 sm:w-32 md:w-36 h-9 md:h-10 retro-button text-beach-foam pixel-font text-xs">
-                      <SelectValue placeholder="Choose emotion" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem className="pixel-font" value="happy">Happy</SelectItem>
-                      <SelectItem className="pixel-font" value="sad">Sad</SelectItem>
-                      <SelectItem className="pixel-font" value="scared">Scared</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="pixel-font text-xs md:text-sm text-beach-foam">Theme</span>
-                  <Select value={themeKey} onValueChange={(v) => setThemeKey(v as "daytime" | "sunset") }>
-                    <SelectTrigger className="w-28 sm:w-32 md:w-36 h-9 md:h-10 retro-button text-beach-foam pixel-font text-xs">
-                      <SelectValue placeholder="Choose theme" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem className="pixel-font" value="daytime">Daytime</SelectItem>
-                      <SelectItem className="pixel-font" value="sunset">Sunset</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+              {/* Dropdowns moved to footer on large screens */}
             </div>
           </div>
 
@@ -449,7 +424,16 @@ export function SnailDanceScreen({ onNavigate }: SnailDanceScreenProps) {
                       const scale = DEFAULT_PLACE_SCALE[item.kind] ?? 1;
                       const w = Math.round(el.naturalWidth * scale);
                       const h = Math.round(el.naturalHeight * scale);
-                      setPlacedItems((prev) => prev.map((p) => p.id === item.id ? { ...p, width: w, height: h } : p));
+                      // If this is the default seeded snail, recentre using measured size
+                      if (defaultSnailIdRef.current === item.id && !defaultSnailCenteredRef.current && containerRef.current) {
+                        const r = containerRef.current.getBoundingClientRect();
+                        const cx = Math.max(0, Math.round((r.width - w) / 2));
+                        const cy = Math.max(0, Math.round((r.height - h) / 2));
+                        defaultSnailCenteredRef.current = true;
+                        setPlacedItems((prev) => prev.map((p) => p.id === item.id ? { ...p, width: w, height: h, x: cx, y: cy } : p));
+                      } else {
+                        setPlacedItems((prev) => prev.map((p) => p.id === item.id ? { ...p, width: w, height: h } : p));
+                      }
                     }
                   }}
                   draggable={false}
@@ -463,17 +447,40 @@ export function SnailDanceScreen({ onNavigate }: SnailDanceScreenProps) {
                 )}
               </div>
             ))}
-            <div className="pointer-events-none select-none" style={{ position: 'absolute', right: '10%', bottom: 24, zIndex: 50 }}>
-              <img src={imageSrc} alt="Snail" className="w-40 md:w-64" style={{ imageRendering: 'pixelated' }} />
-            </div>
           </div>
         </div>
 
         {/* Footer */}
         <div className="p-3 md:p-4 pixel-border" style={{ backgroundColor: 'var(--muted-foreground)' }}>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="pixel-font text-xs md:text-sm text-beach-dark-rock">No puzzles here. Just vibes.</div>
-            <Button onClick={() => onNavigate('welcome')} className="retro-button pixel-font text-beach-dark-rock h-10 md:h-12 text-xs">BACK</Button>
+            <div className="flex items-center gap-2 md:gap-3 order-2 md:order-none">
+              <div className="flex items-center gap-2">
+                <span className="pixel-font text-xs md:text-sm text-beach-dark-rock">Emotion</span>
+                <Select value={emotion} onValueChange={(v) => setEmotion(v as Emotion)}>
+                  <SelectTrigger className="w-28 sm:w-32 md:w-36 h-9 md:h-10 retro-button text-beach-foam pixel-font text-xs">
+                    <SelectValue placeholder="Choose emotion" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem className="pixel-font" value="happy">Happy</SelectItem>
+                    <SelectItem className="pixel-font" value="sad">Sad</SelectItem>
+                    <SelectItem className="pixel-font" value="scared">Scared</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="pixel-font text-xs md:text-sm text-beach-dark-rock">Theme</span>
+                <Select value={themeKey} onValueChange={(v) => setThemeKey(v as "daytime" | "sunset") }>
+                  <SelectTrigger className="w-28 sm:w-32 md:w-36 h-9 md:h-10 retro-button text-beach-foam pixel-font text-xs">
+                    <SelectValue placeholder="Choose theme" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem className="pixel-font" value="daytime">Daytime</SelectItem>
+                    <SelectItem className="pixel-font" value="sunset">Sunset</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
         </div>
       </div>
