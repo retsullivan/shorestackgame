@@ -210,35 +210,40 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
     };
   }, [themeConfig.musicUrl, paused, gameOver, goalOpen, hasWon, failOpen, masterVolume, musicEnabled]);
 
-  // Switch to lose music when failing
+  // Switch to lose music when failing; stop it immediately when closing/retrying
   useEffect(() => {
-    if (!musicEnabled) return;
-    if (!failOpen) return;
-    // pause theme
-    if (audioRef.current) { try { audioRef.current.pause(); } catch {} }
-    // start fail music
-    if (!failAudioRef.current) {
-      // Use Vite glob dynamic import via new Audio with resolved path. We know file lives under assets/music
-      // The loader in themes resolves music, but lose track is fixed name
-      const base = (import.meta as any).glob('../assets/music/**.{mp3,ogg,wav}', { eager: true, as: 'url' }) as Record<string, string>;
-      const direct = base['../assets/music/lose_shorestack.mp3']
-        || Object.entries(base).find(([p]) => p.endsWith('/lose_shorestack.mp3'))?.[1]
-        || Object.entries(base).find(([p]) => p.toLowerCase().includes('lose_shorestack'))?.[1];
-      if (direct) {
-        failAudioRef.current = new Audio(direct);
-        failAudioRef.current.loop = false;
+    // If music is disabled, ensure fail music is stopped
+    if (!musicEnabled) {
+      if (failAudioRef.current) { try { failAudioRef.current.pause(); } catch {} failAudioRef.current = null; }
+      return;
+    }
+    // When fail modal is open, pause theme and play lose track
+    if (failOpen) {
+      if (audioRef.current) { try { audioRef.current.pause(); } catch {} }
+      if (!failAudioRef.current) {
+        const base = (import.meta as any).glob('../assets/music/**.{mp3,ogg,wav}', { eager: true, as: 'url' }) as Record<string, string>;
+        const direct = base['../assets/music/lose_shorestack.mp3']
+          || Object.entries(base).find(([p]) => p.endsWith('/lose_shorestack.mp3'))?.[1]
+          || Object.entries(base).find(([p]) => p.toLowerCase().includes('lose_shorestack'))?.[1];
+        if (direct) {
+          failAudioRef.current = new Audio(direct);
+          failAudioRef.current.loop = false;
+        }
       }
+      if (failAudioRef.current) {
+        const el = failAudioRef.current;
+        el.volume = Math.max(0, Math.min(1, masterVolume / 100));
+        el.currentTime = 0;
+        el.play().catch(() => {});
+      }
+      return () => {
+        // On unmount, ensure fail music is stopped
+        if (failAudioRef.current) { try { failAudioRef.current.pause(); } catch {} failAudioRef.current = null; }
+      };
     }
-    if (failAudioRef.current) {
-      const el = failAudioRef.current;
-      el.volume = Math.max(0, Math.min(1, masterVolume / 100));
-      el.currentTime = 0;
-      el.play().catch(() => {});
-    }
-    return () => {
-      // when fail modal closes or component unmounts, stop fail music
-      if (failAudioRef.current && !failOpen) { try { failAudioRef.current.pause(); } catch {} failAudioRef.current = null; }
-    };
+    // If we reach here, fail modal is closed: stop lose music so theme can resume
+    if (failAudioRef.current) { try { failAudioRef.current.pause(); } catch {} failAudioRef.current = null; }
+    return;
   }, [failOpen, masterVolume, musicEnabled]);
 
   // Stop all music when leaving the level screen (unmount)
