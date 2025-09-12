@@ -20,7 +20,7 @@ interface RockInstance extends RockPoly {
   variantTheme?: "daytime" | "sunset";
 }
 
-const TRAY_H = 100; // canvas tray inside gameplay area (keep for MVP)
+const DEFAULT_TRAY_H = 100; // canvas tray inside gameplay area (keep for MVP)
 // (deprecated) post-landing tuning constants no longer used with physics loop
 
 export interface RockStackingGameProps {
@@ -41,6 +41,9 @@ export interface RockStackingGameProps {
   onStackRightStepsChange?: (steps: { x: number; y: number }[]) => void;
   islands?: string[]; // resolved asset URLs for island images
   onUnstable?: () => void; // fired when a previously settled rock becomes dynamic
+  trayHeight?: number; // override tray height for mobile
+  trayLargePreviewScale?: number; // preview scale for large sprites in tray
+  pickHitboxScale?: number; // tighten picking on mobile
 }
 
 export interface RockStackingGameHandle {
@@ -60,6 +63,7 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
   const flushLeftRef = useRef<boolean>(false);
   // Eagerly import all sprite URLs at build time
   const spriteUrlMap = (import.meta as any).glob("../assets/rock_art/**/**.png", { eager: true, as: "url" }) as Record<string, string>;
+  const TRAY_H = props.trayHeight ?? DEFAULT_TRAY_H;
   // Slight visual overscan so bitmaps appear to touch despite transparent borders
   // Increase and add a tiny render-only downward nudge for tighter stacks
   const SPRITE_OVERSCAN = 1.3; // world draw
@@ -240,7 +244,7 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
           let scale = Math.min(aw / srcW, ah / srcH) * TRAY_OVERSCAN;
           // Apply the same tray scaling to wide large shapes so they fit comfortably
           if (size === "large" && (sprite === "rock" || sprite === "trapezoid" || sprite === "triangle")) {
-            scale *= 0.75;
+            scale *= (props.trayLargePreviewScale ?? 0.75);
           }
           // Make all small-sized rocks appear smaller in the tray
           if (size === "small") {
@@ -682,10 +686,11 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
         }
       }
 
+      const pickHit = props.pickHitboxScale ?? 0.6;
       const pick = [...rocks].reverse().find((r) => {
         return (
-          Math.abs(pos.x - r.position.x) <= r.drawW * 0.6 &&
-          Math.abs(pos.y - r.position.y) <= r.drawH * 0.6
+          Math.abs(pos.x - r.position.x) <= r.drawW * pickHit &&
+          Math.abs(pos.y - r.position.y) <= r.drawH * pickHit
         );
       });
       if (pick) {

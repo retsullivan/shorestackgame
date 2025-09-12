@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useIsMobile } from "./ui/use-mobile";
 import { ScreenBorder } from "./ScreenBorder";
 import { Header } from "./Header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
@@ -35,6 +36,7 @@ export function SnailDanceScreen({ onNavigate }: SnailDanceScreenProps) {
   const { masterVolume, musicEnabled } = useSettings();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [showWelcome, setShowWelcome] = useState<boolean>(true);
+  const isMobile = useIsMobile();
 
   // Theme colors and music come from the chosen theme
   const themeConfig = useMemo(() => getTheme(themeKey), [themeKey]);
@@ -65,6 +67,42 @@ export function SnailDanceScreen({ onNavigate }: SnailDanceScreenProps) {
     startTop: number;
     corner: 'nw' | 'ne' | 'se' | 'sw';
   } | null>(null);
+  const CORNER_TAP_SLOP_PX = 12;
+  const trayTouchRef = useRef<{ sx: number; sy: number; moved: boolean }>({ sx: 0, sy: 0, moved: false });
+
+  function placeFromTray(kind: "sand" | "island" | "tree" | "mountain" | "rock" | "snail", url: string, largeUrl?: string) {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const id = `${kind}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const finalUrl = kind === 'rock' ? (largeUrl || url) : url;
+    const x = Math.max(0, Math.round(rect.width * 0.5) - 24);
+    const y = Math.max(0, Math.round(rect.height * 0.55) - 24);
+    const z = spawnIndexRef.current;
+    spawnIndexRef.current = spawnIndexRef.current + 1;
+    setPlacedItems((prev) => prev.concat({ id, url: finalUrl, kind, x, y, z }));
+    setSelectedId(id);
+  }
+
+  function handleTrayTouchStart(e: React.TouchEvent) {
+    const t = e.touches[0];
+    if (!t) return;
+    trayTouchRef.current = { sx: t.clientX, sy: t.clientY, moved: false };
+  }
+
+  function handleTrayTouchMove(e: React.TouchEvent) {
+    const t = e.touches[0];
+    if (!t) return;
+    const { sx, sy } = trayTouchRef.current;
+    if (Math.abs(t.clientX - sx) > 8 || Math.abs(t.clientY - sy) > 8) {
+      trayTouchRef.current.moved = true;
+    }
+  }
+
+  function handleTrayTouchEndPlace(e: React.TouchEvent, kind: "sand" | "island" | "tree" | "mountain" | "rock" | "snail", url: string, largeUrl?: string) {
+    if (trayTouchRef.current.moved) return;
+    e.preventDefault();
+    placeFromTray(kind, url, largeUrl);
+  }
   // Incrementing z-order index: earlier items are behind later items
   const spawnIndexRef = useRef<number>(0);
   const defaultSnailIdRef = useRef<string | null>(null);
@@ -213,6 +251,7 @@ export function SnailDanceScreen({ onNavigate }: SnailDanceScreenProps) {
   }
 
   function beginItemDrag(e: React.MouseEvent, id: string) {
+    e.stopPropagation();
     if (!containerRef.current) return;
     const item = placedItems.find((p) => p.id === id);
     if (!item) return;
@@ -259,6 +298,8 @@ export function SnailDanceScreen({ onNavigate }: SnailDanceScreenProps) {
 
   // Touch-based dragging support (mobile)
   function beginItemTouch(e: React.TouchEvent, id: string) {
+    e.stopPropagation();
+    e.preventDefault();
     if (!containerRef.current) return;
     const touch = e.touches[0];
     if (!touch) return;
@@ -270,10 +311,64 @@ export function SnailDanceScreen({ onNavigate }: SnailDanceScreenProps) {
     dragOffsetRef.current = { dx: touch.clientX - rect.left - item.x, dy: touch.clientY - rect.top - item.y };
   }
 
+  function isPointNearSelectedCorner(clientX: number, clientY: number): boolean {
+    if (!selectedId || !containerRef.current) return false;
+    const item = placedItems.find((p) => p.id === selectedId);
+    if (!item || !item.width || !item.height) return false;
+    const rect = containerRef.current.getBoundingClientRect();
+    const px = clientX - rect.left;
+    const py = clientY - rect.top;
+    const corners = [
+      { x: item.x, y: item.y },
+      { x: item.x + item.width, y: item.y },
+      { x: item.x, y: item.y + item.height },
+      { x: item.x + item.width, y: item.y + item.height },
+    ];
+    for (const c of corners) {
+      if (Math.abs(px - c.x) <= CORNER_TAP_SLOP_PX && Math.abs(py - c.y) <= CORNER_TAP_SLOP_PX) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function isPointInsideSelected(clientX: number, clientY: number): boolean {
+    if (!selectedId || !containerRef.current) return false;
+    const item = placedItems.find((p) => p.id === selectedId);
+    if (!item || !item.width || !item.height) return false;
+    const rect = containerRef.current.getBoundingClientRect();
+    const px = clientX - rect.left;
+    const py = clientY - rect.top;
+    return px >= item.x && px <= item.x + item.width && py >= item.y && py <= item.y + item.height;
+  }
+
+  function handleContainerMouseDown(e: React.MouseEvent) {
+    // Ignore if a resize is starting or dragging in progress
+    if (resizeStartRef.current || draggingId) return;
+    if (!selectedId) return;
+    // Keep selection if clicking inside item or near its corners
+    if (isPointInsideSelected(e.clientX, e.clientY) || isPointNearSelectedCorner(e.clientX, e.clientY)) return;
+    setSelectedId(null);
+  }
+
+  function handleContainerTouchStart(e: React.TouchEvent) {
+    if (resizeStartRef.current || draggingId) return;
+    if (!selectedId) return;
+    const touch = e.touches[0];
+    if (!touch) return;
+    if (isPointInsideSelected(touch.clientX, touch.clientY) || isPointNearSelectedCorner(touch.clientX, touch.clientY)) return;
+    setSelectedId(null);
+  }
+
   function handleTouchMove(e: React.TouchEvent) {
     const touch = e.touches[0];
     if (!touch) return;
     lastMouseRef.current = { x: touch.clientX, y: touch.clientY };
+    // If a resize is in progress, let the resize handler process movement
+    if (resizeStartRef.current) {
+      e.preventDefault();
+      return;
+    }
     if (!draggingId || !containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     const nx = touch.clientX - rect.left - dragOffsetRef.current.dx;
@@ -329,6 +424,31 @@ export function SnailDanceScreen({ onNavigate }: SnailDanceScreenProps) {
     };
   }
 
+  function beginResizeTouch(e: React.TouchEvent, id: string, corner: 'nw' | 'ne' | 'se' | 'sw') {
+    e.stopPropagation();
+    e.preventDefault();
+    const touch = e.touches[0];
+    if (!touch) return;
+    const item = placedItems.find((p) => p.id === id);
+    if (!item) return;
+    setSelectedId(id);
+    // Ensure dragging does not compete with resizing on touch
+    setDraggingId(null);
+    const startW = item.width ?? 0;
+    const startH = item.height ?? 0;
+    if (!startW || !startH) return;
+    resizeStartRef.current = {
+      id,
+      startX: touch.clientX,
+      startY: touch.clientY,
+      startW,
+      startH,
+      startLeft: item.x,
+      startTop: item.y,
+      corner,
+    };
+  }
+
   function handleResizeMove(e: React.MouseEvent) {
     if (!resizeStartRef.current) return;
     const { id, startX, startW, startH, startLeft, startTop, corner } = resizeStartRef.current;
@@ -355,6 +475,36 @@ export function SnailDanceScreen({ onNavigate }: SnailDanceScreenProps) {
     }
 
     setPlacedItems((prev) => prev.map((p) => p.id === id ? { ...p, x: newX, y: newY, width: newW, height: newH } : p));
+  }
+
+  function handleResizeMoveTouch(e: React.TouchEvent) {
+    if (!resizeStartRef.current) return;
+    const touch = e.touches[0];
+    if (!touch) return;
+    const { id, startX, startW, startH, startLeft, startTop, corner } = resizeStartRef.current;
+    const dx = touch.clientX - startX;
+
+    const ratio = startH / startW;
+    let newW = startW;
+    if (corner === 'se' || corner === 'ne') {
+      newW = startW + dx;
+    } else if (corner === 'sw' || corner === 'nw') {
+      newW = startW - dx;
+    }
+    newW = Math.max(24, Math.min(2048, Math.round(newW)));
+    const newH = Math.round(newW * ratio);
+
+    let newX = startLeft;
+    let newY = startTop;
+    if (corner === 'sw' || corner === 'nw') {
+      newX = startLeft + (startW - newW);
+    }
+    if (corner === 'nw' || corner === 'ne') {
+      newY = startTop + (startH - newH);
+    }
+
+    setPlacedItems((prev) => prev.map((p) => p.id === id ? { ...p, x: newX, y: newY, width: newW, height: newH } : p));
+    e.preventDefault();
   }
 
   function endResize() {
@@ -391,10 +541,10 @@ export function SnailDanceScreen({ onNavigate }: SnailDanceScreenProps) {
         onOpenChange={setShowWelcome}
         onClose={() => setShowWelcome(false)}
       />
-      <div className="min-h-screen flex flex-col" style={{ background: `linear-gradient(180deg, ${themeConfig.colors.sky} 0%, ${themeConfig.colors.sky} 60%, ${themeConfig.colors.water} 100%)` }}>
+      <div className="min-h-screen flex flex-col" style={{ background: `linear-gradient(180deg, ${themeConfig.colors.sky} 0%, ${themeConfig.colors.sky} 60%, ${themeConfig.colors.water} 100%)`, paddingTop: 'env(safe-area-inset-top, 0px)' }}>
         <div className="flex flex-col px-3 py-2 md:p-4 gap-2 sm:gap-0">
           <div className="flex items-center space-x-2 md:space-x-8">
-            <Header title="DANCY PARTY" subtitle="Decorate the dance shoreand enjoy" onBack={() => onNavigate('welcome')} />
+            <Header title="DANCY PARTY" subtitle="Decorate the dance shore and enjoy" onBack={() => onNavigate('welcome')} />
           </div>
         </div>
 
@@ -403,7 +553,7 @@ export function SnailDanceScreen({ onNavigate }: SnailDanceScreenProps) {
           {/* Top Tray + Dropdowns */}
           <div className="absolute left-0 right-0 top-8 md:top-6 z-20 px-2 md:px-3">
             <div className="w-full flex flex-col gap-2 md:grid md:grid-cols-1 md:items-center md:gap-3 lg:gap-4">
-              <div ref={trayRef} className="retro-button rounded-md md:rounded-lg whitespace-nowrap py-1 md:py-2 px-2 min-h-[44px] md:col-start-1 " style={{ transform: 'none', boxShadow: '4px 4px 0px #2c1810, inset 0 0 0 2px #f7f3e9', backdropFilter: 'blur(2px)' }}>
+              <div ref={trayRef} className="retro-button rounded-md md:rounded-lg whitespace-nowrap py-1 md:py-2 px-2 min-h-[44px] md:col-start-1 " style={{ transform: 'none', boxShadow: '4px 4px 0px #2c1810, inset 0 0 0 2px #f7f3e9', backdropFilter: 'blur(2px)', marginTop: 'env(safe-area-inset-top, 0px)' }}>
                 <div className="w-full flex items-center gap-2">
                   <div
                     onClick={() => setShowWelcome(true)}
@@ -413,23 +563,73 @@ export function SnailDanceScreen({ onNavigate }: SnailDanceScreenProps) {
                   >
                     <Info className="w-4 h-4 text-white" strokeWidth={3} />
                   </div>
-                  <div className="flex-1 overflow-x-auto overflow-y-hidden touch-pan-x" style={{ WebkitOverflowScrolling: 'touch' }}>
+                  <div className="flex-1 overflow-x-auto overflow-y-hidden touch-pan-x" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x', overscrollBehaviorX: 'contain' }}>
                     <div className="inline-flex gap-2 items-center">
                       {mountainUrls.map((u) => (
-                        <img key={`mountain-${u}`} src={u} draggable onDragStart={(e) => handlePaletteDragStart(e, u, 'mountain')} className="h-12 w-auto object-contain pixel-border cursor-grab bg-white/60 inline-block" style={{ imageRendering: 'pixelated' }} />
+                        <img
+                          key={`mountain-${u}`}
+                          src={u}
+                          draggable={!isMobile}
+                          onDragStart={(e) => { if (!isMobile) handlePaletteDragStart(e, u, 'mountain'); }}
+                          onTouchStart={isMobile ? handleTrayTouchStart : undefined}
+                          onTouchMove={isMobile ? handleTrayTouchMove : undefined}
+                          onTouchEnd={isMobile ? (e) => handleTrayTouchEndPlace(e, 'mountain', u) : undefined}
+                          className="h-12 w-auto object-contain pixel-border cursor-grab bg-white/60 inline-block"
+                          style={{ imageRendering: 'pixelated' }}
+                        />
                       ))}
                       {treeUrls.map((u) => (
-                        <img key={`tree-${u}`} src={u} draggable onDragStart={(e) => handlePaletteDragStart(e, u, 'tree')} className="h-12 w-auto object-contain pixel-border cursor-grab bg-white/60 inline-block" style={{ imageRendering: 'pixelated' }} />
+                        <img
+                          key={`tree-${u}`}
+                          src={u}
+                          draggable={!isMobile}
+                          onDragStart={(e) => { if (!isMobile) handlePaletteDragStart(e, u, 'tree'); }}
+                          onTouchStart={isMobile ? handleTrayTouchStart : undefined}
+                          onTouchMove={isMobile ? handleTrayTouchMove : undefined}
+                          onTouchEnd={isMobile ? (e) => handleTrayTouchEndPlace(e, 'tree', u) : undefined}
+                          className="h-12 w-auto object-contain pixel-border cursor-grab bg-white/60 inline-block"
+                          style={{ imageRendering: 'pixelated' }}
+                        />
                       ))}
                       {sandUrls.map((u) => (
-                        <img key={`sand-${u}`} src={u} draggable onDragStart={(e) => handlePaletteDragStart(e, u, 'sand')} className="h-12 w-auto object-contain pixel-border cursor-grab bg-white/60 inline-block" style={{ imageRendering: 'pixelated' }} />
+                        <img
+                          key={`sand-${u}`}
+                          src={u}
+                          draggable={!isMobile}
+                          onDragStart={(e) => { if (!isMobile) handlePaletteDragStart(e, u, 'sand'); }}
+                          onTouchStart={isMobile ? handleTrayTouchStart : undefined}
+                          onTouchMove={isMobile ? handleTrayTouchMove : undefined}
+                          onTouchEnd={isMobile ? (e) => handleTrayTouchEndPlace(e, 'sand', u) : undefined}
+                          className="h-12 w-auto object-contain pixel-border cursor-grab bg-white/60 inline-block"
+                          style={{ imageRendering: 'pixelated' }}
+                        />
                       ))}
                       {rockPreview.map((r) => (
-                        <img key={`rock-${r.smallKey}`} src={r.smallUrl} draggable onDragStart={(e) => handlePaletteDragStart(e, r.smallUrl, 'rock', r.largeUrl)} className="h-12 w-auto object-contain pixel-border cursor-grab bg-white/60 inline-block" style={{ imageRendering: 'pixelated' }} />
+                        <img
+                          key={`rock-${r.smallKey}`}
+                          src={r.smallUrl}
+                          draggable={!isMobile}
+                          onDragStart={(e) => { if (!isMobile) handlePaletteDragStart(e, r.smallUrl, 'rock', r.largeUrl); }}
+                          onTouchStart={isMobile ? handleTrayTouchStart : undefined}
+                          onTouchMove={isMobile ? handleTrayTouchMove : undefined}
+                          onTouchEnd={isMobile ? (e) => handleTrayTouchEndPlace(e, 'rock', r.smallUrl, r.largeUrl) : undefined}
+                          className="h-12 w-auto object-contain pixel-border cursor-grab bg-white/60 inline-block"
+                          style={{ imageRendering: 'pixelated' }}
+                        />
                       ))}
                       {/* Snail variants */}
                       {[pinkSnail, sadSnail, scaredSnail, happySnail].map((u, idx) => (
-                        <img key={`snail-${idx}`} src={u} draggable onDragStart={(e) => handlePaletteDragStart(e, u, 'snail')} className="h-12 w-auto object-contain pixel-border cursor-grab bg-white/60 inline-block" style={{ imageRendering: 'pixelated' }} />
+                        <img
+                          key={`snail-${idx}`}
+                          src={u}
+                          draggable={!isMobile}
+                          onDragStart={(e) => { if (!isMobile) handlePaletteDragStart(e, u, 'snail'); }}
+                          onTouchStart={isMobile ? handleTrayTouchStart : undefined}
+                          onTouchMove={isMobile ? handleTrayTouchMove : undefined}
+                          onTouchEnd={isMobile ? (e) => handleTrayTouchEndPlace(e, 'snail', u) : undefined}
+                          className="h-12 w-auto object-contain pixel-border cursor-grab bg-white/60 inline-block"
+                          style={{ imageRendering: 'pixelated' }}
+                        />
                       ))}
                     </div>
                   </div>
@@ -453,12 +653,15 @@ export function SnailDanceScreen({ onNavigate }: SnailDanceScreenProps) {
             className="absolute inset-0"
             onDrop={handleDrop}
             onDragOver={handleDragOver}
+            onMouseDown={handleContainerMouseDown}
             onMouseMove={(e) => { handleMouseMove(e); handleResizeMove(e); }}
             onMouseUp={(e) => { endItemDrag(e); endResize(); }}
             onMouseLeave={(e) => { endItemDrag(e); endResize(); }}
-            onTouchMove={(e) => { handleTouchMove(e); }}
+            onTouchStart={handleContainerTouchStart}
+            onTouchMove={(e) => { handleResizeMoveTouch(e); handleTouchMove(e); }}
             onTouchEnd={(e) => { endItemTouch(e); endResize(); }}
             onTouchCancel={(e) => { endItemTouch(e); endResize(); }}
+            style={{ touchAction: 'none' }}
           >
             {placedItems.sort((a, b) => a.z - b.z).map((item) => (
               <div key={item.id} className="absolute select-none" style={{ left: item.x, top: item.y, zIndex: item.z }} onMouseDown={() => setSelectedId(item.id)}>
@@ -499,29 +702,33 @@ export function SnailDanceScreen({ onNavigate }: SnailDanceScreenProps) {
                     {/* Corner handles */}
                     <div
                       className="absolute"
-                      style={{ width: 5, height: 5, left: -3, top: -3, background: '#000', cursor: 'nwse-resize' }}
+                      style={{ width: 5, height: 5, left: -3, top: -3, background: '#000', cursor: 'nwse-resize', touchAction: 'none' }}
                       onMouseDown={(e) => beginResize(e, item.id, 'nw')}
+                      onTouchStart={(e) => beginResizeTouch(e, item.id, 'nw')}
                       title="Resize"
                       aria-label="Resize top-left"
                     />
                     <div
                       className="absolute"
-                      style={{ width: 5, height: 5, right: -3, top: -3, background: '#000', cursor: 'nesw-resize' }}
+                      style={{ width: 5, height: 5, right: -3, top: -3, background: '#000', cursor: 'nesw-resize', touchAction: 'none' }}
                       onMouseDown={(e) => beginResize(e, item.id, 'ne')}
+                      onTouchStart={(e) => beginResizeTouch(e, item.id, 'ne')}
                       title="Resize"
                       aria-label="Resize top-right"
                     />
                     <div
                       className="absolute"
-                      style={{ width: 5, height: 5, left: -3, bottom: -3, background: '#000', cursor: 'nesw-resize' }}
+                      style={{ width: 5, height: 5, left: -3, bottom: -3, background: '#000', cursor: 'nesw-resize', touchAction: 'none' }}
                       onMouseDown={(e) => beginResize(e, item.id, 'sw')}
+                      onTouchStart={(e) => beginResizeTouch(e, item.id, 'sw')}
                       title="Resize"
                       aria-label="Resize bottom-left"
                     />
                     <div
                       className="absolute"
-                      style={{ width: 5, height: 5, right: -3, bottom: -3, background: '#000', cursor: 'nwse-resize' }}
+                      style={{ width: 5, height: 5, right: -3, bottom: -3, background: '#000', cursor: 'nwse-resize', touchAction: 'none' }}
                       onMouseDown={(e) => beginResize(e, item.id, 'se')}
+                      onTouchStart={(e) => beginResizeTouch(e, item.id, 'se')}
                       title="Resize"
                       aria-label="Resize bottom-right"
                     />
@@ -545,7 +752,7 @@ export function SnailDanceScreen({ onNavigate }: SnailDanceScreenProps) {
         </div>
 
         {/* Footer */}
-        <div className="p-3 md:p-4 pixel-border" style={{ backgroundColor: 'var(--muted-foreground)' }}>
+        <div className="p-3 md:p-4 pixel-border" style={{ backgroundColor: 'var(--muted-foreground)', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.5rem)' }}>
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="pixel-font text-xs md:text-sm text-beach-dark-rock">No puzzles here. Just vibes.</div>
             <div className="flex items-center gap-2 md:gap-3 order-2 md:order-none">

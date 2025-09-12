@@ -16,12 +16,13 @@ interface GoalModalProps {
 	startingTime: number | null;
 	isBalanceLevel?: boolean;
 	onStart: () => void;
+  startLabel?: string;
 }
 
-export function GoalModal({ open, onOpenChange, levelNumber, goalText, tip,isTimed, startingTime, isBalanceLevel, onStart }: GoalModalProps) {
+export function GoalModal({ open, onOpenChange, levelNumber, goalText, tip,isTimed, startingTime, isBalanceLevel, onStart, startLabel = 'START' }: GoalModalProps) {
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent hideClose className="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%]">
+			<DialogContent hideClose className="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] p-4 sm:p-6 sm:rounded-lg" style={{ width: 'min(92vw, 28rem)', maxHeight: '80vh', overflowY: 'auto' }}>
 				<DialogHeader className="flex flex-row justify-center">
 					<DialogTitle className="pixel-font">LEVEL {String(levelNumber)} GOAL</DialogTitle>
 				</DialogHeader>
@@ -42,8 +43,8 @@ export function GoalModal({ open, onOpenChange, levelNumber, goalText, tip,isTim
 				)}
 				</div>
 				<DialogFooter className="w-full">
-					<div className="flex w-full items-center justify-end gap-2">
-						<Button className="retro-button pixel-font text-beach-foam w-28 h-12 md:w-32 md:h-14 text-xs md:text-sm" onClick={onStart}>START</Button>
+					<div className="flex w-full items-stretch gap-2 flex-col sm:flex-row sm:justify-end">
+						<Button className="retro-button pixel-font text-beach-foam w-full sm:w-32 h-12 md:h-14 text-xs md:text-sm" onClick={onStart}>{startLabel}</Button>
 					</div>
 				</DialogFooter>
 			</DialogContent>
@@ -64,7 +65,7 @@ interface WinModalProps {
 export function WinModal({ open, onOpenChange, levelNumber, isTimed, timeLeft, onLevels, onNext }: WinModalProps) {
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent hideClose className="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%]">
+			<DialogContent hideClose className="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] p-4 sm:p-6 sm:rounded-lg" style={{ width: 'min(92vw, 28rem)', maxHeight: '80vh', overflowY: 'auto' }}>
 				<DialogHeader className="flex flex-row justify-center">
 					<DialogTitle className="pixel-font">LEVEL {String(levelNumber)} COMPLETED!</DialogTitle>
 				</DialogHeader>
@@ -73,15 +74,15 @@ export function WinModal({ open, onOpenChange, levelNumber, isTimed, timeLeft, o
 				</div>
 				<div className="pixel-font text-sm">{isTimed ? `Finished with ${timeLeft ?? 0}s left.` : ``}</div>
 				<DialogFooter className="w-full">
-					<div className="flex w-full items-center justify-between gap-2">
-						<div>
-							<Button className="retro-button pixel-font text-beach-foam w-28 h-12 md:w-32 md:h-14 text-xs md:text-sm inline-flex items-center gap-2" onClick={onLevels}>
+					<div className="flex w-full items-stretch gap-2 flex-col sm:flex-row sm:justify-between">
+						<div className="w-full sm:w-auto">
+							<Button className="retro-button pixel-font text-beach-foam w-full sm:w-32 h-12 md:h-14 text-xs md:text-sm inline-flex items-center gap-2" onClick={onLevels}>
 								<ArrowLeft className="w-4 h-4" />
 								LEVELS
 							</Button>
 						</div>
-						<div className="flex gap-2">
-							<Button className="retro-button pixel-font text-beach-foam w-28 h-12 md:w-32 md:h-14 text-xs md:text-sm" onClick={onNext}>NEXT</Button>
+						<div className="flex gap-2 w-full sm:w-auto">
+							<Button className="retro-button pixel-font text-beach-foam w-full sm:w-32 h-12 md:h-14 text-xs md:text-sm" onClick={onNext}>NEXT</Button>
 						</div>
 					</div>
 				</DialogFooter>
@@ -101,7 +102,7 @@ interface FailModalProps {
 export function FailModal({ open, onOpenChange, isTimed, onLevels, onRetry }: FailModalProps) {
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent hideClose className="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%]">
+			<DialogContent hideClose className="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] p-4 sm:p-6 sm:rounded-lg" style={{ width: 'min(92vw, 28rem)', maxHeight: '80vh', overflowY: 'auto' }}>
 				<DialogHeader className="flex flex-row justify-center">
 					<DialogTitle className="pixel-font">TRY AGAIN?</DialogTitle>
 				</DialogHeader>
@@ -110,15 +111,15 @@ export function FailModal({ open, onOpenChange, isTimed, onLevels, onRetry }: Fa
 				</div>
 				<div className="pixel-font text-sm">{isTimed ? `Time's up!` : `Challenge not met.`}</div>
 				<DialogFooter className="w-full">
-					<div className="flex w-full items-center justify-between gap-2">
-						<div>
-							<Button className="retro-button pixel-font text-beach-foam w-28 h-12 md:w-32 md:h-14 text-xs md:text-sm inline-flex items-center gap-2" onClick={onLevels}>
+					<div className="flex w-full items-stretch gap-2 flex-col sm:flex-row sm:justify-between">
+						<div className="w-full sm:w-auto">
+							<Button className="retro-button pixel-font text-beach-foam w-full sm:w-32 h-12 md:h-14 text-xs md:text-sm inline-flex items-center gap-2" onClick={onLevels}>
 								<ArrowLeft className="w-4 h-4" />
 								LEVELS
 							</Button>
 						</div>
-						<div className="flex gap-2">
-							<Button className="retro-button pixel-font text-beach-foam w-28 h-12 md:w-32 md:h-14 text-xs md:text-sm" onClick={onRetry}>RETRY</Button>
+						<div className="flex gap-2 w-full sm:w-auto">
+							<Button className="retro-button pixel-font text-beach-foam w-full sm:w-32 h-12 md:h-14 text-xs md:text-sm" onClick={onRetry}>RETRY</Button>
 						</div>
 					</div>
 				</DialogFooter>
@@ -140,7 +141,7 @@ interface PauseModalProps {
 export function PauseModal({ open, onOpenChange, isTimed, timeLeft, onResume, onRestart }: PauseModalProps) {
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent hideClose className="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%]">
+			<DialogContent hideClose className="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] p-4 sm:p-6 sm:rounded-lg" style={{ width: 'min(92vw, 28rem)', maxHeight: '80vh', overflowY: 'auto' }}>
 				<DialogHeader className="flex flex-row justify-center">
 					<DialogTitle className="pixel-font">PAUSED</DialogTitle>
 				</DialogHeader>
@@ -149,9 +150,9 @@ export function PauseModal({ open, onOpenChange, isTimed, timeLeft, onResume, on
 				</div>
 				<div className="pixel-font text-sm">{isTimed ? `Time left: ${timeLeft ?? 0}s` : `Take a breather.`}</div>
 				<DialogFooter className="w-full">
-					<div className="flex w-full items-center justify-end gap-2">
-						<Button className="retro-button pixel-font text-beach-foam w-28 h-12 md:w-32 md:h-14 text-xs md:text-sm" onClick={onRestart}>RESTART</Button>
-						<Button className="retro-button pixel-font text-beach-foam w-28 h-12 md:w-32 md:h-14 text-xs md:text-sm" onClick={onResume}>RESUME</Button>
+					<div className="flex w-full items-stretch gap-2 flex-col sm:flex-row sm:justify-end">
+						<Button className="retro-button pixel-font text-beach-foam w-full sm:w-32 h-12 md:h-14 text-xs md:text-sm" onClick={onRestart}>RESTART</Button>
+						<Button className="retro-button pixel-font text-beach-foam w-full sm:w-32 h-12 md:h-14 text-xs md:text-sm" onClick={onResume}>RESUME</Button>
 					</div>
 				</DialogFooter>
 			</DialogContent>
@@ -170,7 +171,7 @@ interface SnailDanceWelcomeModalProps {
 export function SnailDanceWelcomeModal({ open, onOpenChange, onClose }: SnailDanceWelcomeModalProps) {
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent hideClose className="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%]">
+			<DialogContent hideClose className="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] p-4 sm:p-6 sm:rounded-lg" style={{ width: 'min(92vw, 28rem)', maxHeight: '80vh', overflowY: 'auto' }}>
 				<DialogHeader className="flex flex-row justify-center">
 					<DialogTitle className="pixel-font">WELCOME</DialogTitle>
 				</DialogHeader>
@@ -179,8 +180,8 @@ export function SnailDanceWelcomeModal({ open, onOpenChange, onClose }: SnailDan
 				</div>
 				<div className="pixel-font text-sm text-center">Welcome to the Snail Dance Party! Decorate the dance shore by dragging items from the tray.</div>
 				<DialogFooter className="w-full">
-					<div className="flex w-full items-center justify-end gap-2">
-						<Button className="retro-button pixel-font text-beach-foam w-28 h-12 md:w-32 md:h-14 text-xs md:text-sm" onClick={onClose}>LET'S DANCE</Button>
+					<div className="flex w-full items-stretch gap-2 flex-col sm:flex-row sm:justify-end">
+						<Button className="retro-button pixel-font text-beach-foam w-full sm:w-32 h-12 md:h-14 text-xs md:text-sm" onClick={onClose}>LET'S DANCE</Button>
 					</div>
 				</DialogFooter>
 			</DialogContent>

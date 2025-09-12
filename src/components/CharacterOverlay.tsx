@@ -21,6 +21,7 @@ interface CharacterOverlayProps {
   isScared?: boolean;
   isSad?: boolean;
   variantTheme?: 'daytime' | 'sunset';
+  compact?: boolean; // show on mobile in a smaller footprint
 }
 
 let CACHED_HAPPY_MS: number | null = null;
@@ -87,7 +88,7 @@ async function computeGifLoopDurationMs(url: string): Promise<number> {
   }
 }
 
-export default function CharacterOverlay({ showWave = false, horizonPageY, islands = [], showClimb = false, stackTopPage, rightBasePage, stepTargetPage, showHappy = false, onHappyLoopMs, isScared = false, isSad = false, variantTheme = 'daytime' }: CharacterOverlayProps) {
+export default function CharacterOverlay({ showWave = false, horizonPageY, islands = [], showClimb = false, stackTopPage, rightBasePage, stepTargetPage, showHappy = false, onHappyLoopMs, isScared = false, isSad = false, variantTheme = 'daytime', compact = false }: CharacterOverlayProps) {
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -179,11 +180,11 @@ export default function CharacterOverlay({ showWave = false, horizonPageY, islan
 
       {/* Snail character: default bottom-right; when climbing, move to stack top */}
       <div
-        className="z-50 pointer-events-none select-none hidden md:block snail-move"
+        className={`z-50 pointer-events-none select-none ${compact ? 'block' : 'hidden md:block'} snail-move`}
         style={{
           position: 'fixed',
-          right: showClimb && (stackTopPage || rightBasePage || stepTargetPage) ? undefined : 16,
-          bottom: showClimb && (stackTopPage || rightBasePage || stepTargetPage) ? undefined : 16,
+          right: showClimb && (stackTopPage || rightBasePage || stepTargetPage) ? undefined : (compact ? 8 : 16),
+          bottom: showClimb && (stackTopPage || rightBasePage || stepTargetPage) ? undefined : (compact ? 'calc(env(safe-area-inset-bottom, 0px) + 28px)' : 16),
           left: showClimb && (stackTopPage || rightBasePage || stepTargetPage) ? Math.round((stepTargetPage ?? stackTopPage ?? rightBasePage)!.x) : undefined,
           top: showClimb && (stackTopPage || rightBasePage || stepTargetPage) ? Math.round((stepTargetPage ?? stackTopPage ?? rightBasePage)!.y) : undefined,
           transform: showClimb && (stackTopPage || rightBasePage || stepTargetPage) ? 'translate(-50%, -100%)' : 'none',
@@ -193,7 +194,7 @@ export default function CharacterOverlay({ showWave = false, horizonPageY, islan
           src={showClimb || showHappy ? happySnail : (isSad ? sadSnail : (isScared ? scaredSnail : snail))}
           alt="Pink snail character"
           className="block h-auto"
-          style={{ imageRendering: 'pixelated' }}
+          style={{ imageRendering: 'pixelated', width: compact ? 176 : undefined }}
         />
       </div>
     </>

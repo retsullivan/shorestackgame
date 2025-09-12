@@ -64,6 +64,29 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
     return null;
   }, [isTimed, levelData.challenge]);
 
+  // Mobile rock scaling so physics and height reflect smaller visuals
+  const MOBILE_ROCK_SCALE = { large: 0.82, small: 0.92 } as const;
+  const renderTypes = useMemo(() => {
+    if (!isMobile) return levelData.types;
+    return levelData.types.map((t) => {
+      const factor = t.size === 'large' ? MOBILE_ROCK_SCALE.large : MOBILE_ROCK_SCALE.small;
+      return {
+        ...t,
+        anchors: t.anchors.map((a) => ({ x: Math.round(a.x * factor), y: Math.round(a.y * factor) })),
+        drawW: Math.round(t.drawW * factor),
+        drawH: Math.round(t.drawH * factor),
+      };
+    });
+  }, [levelData.types, isMobile]);
+  // Scale target height proportionally so height goals remain fair on mobile
+  const mobileHeightScale = useMemo(() => {
+    if (!isMobile) return 1;
+    const total = levelData.types.reduce((acc, t) => acc + (t.count || 0), 0) || 1;
+    const weighted = levelData.types.reduce((acc, t) => acc + (t.count || 0) * (t.size === 'large' ? MOBILE_ROCK_SCALE.large : MOBILE_ROCK_SCALE.small), 0);
+    // Clamp to avoid targets getting too low on tiny sets
+    return Math.max(0.6, Math.min(1, weighted / total));
+  }, [levelData.types, isMobile]);
+
   useEffect(() => {
     setTimeLeft(startingTime);
     setPaused(true);
@@ -137,7 +160,8 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
         // Use stricter target so three small unrotated rocks aren't enough by default.
         // Rotated stacks still count due to orientation-aware height measurement in the game loop.
         const fallback = Math.min(260, Math.round((typeof window !== 'undefined' ? window.innerHeight : 600) * 0.28));
-        const target = Math.max(40, Math.round((snailHeightPx > 0 ? snailHeightPx : fallback) * 0.9));
+        const baseTarget = Math.max(40, Math.round((snailHeightPx > 0 ? snailHeightPx : fallback) * 0.9));
+        const target = Math.round(baseTarget * mobileHeightScale);
         if ((s.stackHeightPx ?? 0) >= target && s.staticCount === s.totalPlaced && s.touchingGroundStatic >= 1) {
           setGameOver(true);
           setPaused(true);
@@ -304,7 +328,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
             <RockStackingGame
               key={levelNumber}
               ref={gameRef}
-              types={levelData.types}
+              types={renderTypes}
               theme={levelData.theme}
               paused={paused}
               onStateChange={handleStateChange}
@@ -313,6 +337,9 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
               onStackTopChange={(x, y) => setStackTopPage({ x, y })}
               onStackRightBaseChange={(x, y) => setStackRightBasePage({ x, y })}
               islands={themeConfig.islands}
+              trayHeight={isMobile ? 84 : undefined}
+              trayLargePreviewScale={isMobile ? 0.65 : undefined}
+              pickHitboxScale={isMobile ? 0.5 : undefined}
               onUnstable={() => {
                 const now = Date.now();
                 // Throttle to once per 2.5s
@@ -372,6 +399,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
           isTimed={isTimed}
           startingTime={startingTime}
           isBalanceLevel={isBalanceLevel}
+          startLabel={hasInteracted ? 'RESUME' : 'START'}
           onStart={() => { setGoalOpen(false); setPaused(false); setHasInteracted(false); setTimeLeft(startingTime); }}
         />
 
@@ -407,7 +435,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
           onRetry={() => { setFailOpen(false); setSnailClimb(false); setSnailHappy(false); if (happyTimerRef.current) { window.clearTimeout(happyTimerRef.current); happyTimerRef.current = null; } gameRef.current?.reset(); setShowWave(false); setGameOver(false); setPaused(false); setHasInteracted(false); setTimeLeft(startingTime); }}
         />
         {/* Character Overlay */}
-        {!isMobile && !pauseOpen && (
+        {!pauseOpen && (
           <CharacterOverlay
             showWave={showWave}
             horizonPageY={horizonPageY ?? undefined}
@@ -421,6 +449,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
             isScared={Boolean(isTimed && timeLeft !== null && timeLeft <= 5 && !snailHappy && !snailClimb)}
             isSad={Boolean((failOpen || showWave || (isTimed && timeLeft !== null && timeLeft <= 0)) && !snailHappy && !snailClimb)}
             variantTheme={overlayVariant}
+            compact={isMobile}
           />
         )}
       </div>
