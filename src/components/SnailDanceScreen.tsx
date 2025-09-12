@@ -3,9 +3,10 @@ import { ScreenBorder } from "./ScreenBorder";
 import { Header } from "./Header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 // import { Button } from "./ui/button";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, Info } from "lucide-react";
 import { getTheme } from "../gameplay-logic/themes";
 import { useSettings } from "./SettingsContext";
+import { SnailDanceWelcomeModal } from "./GameModals";
 
 import happySnail from "../assets/character_art/happy_snail_cropped_large.gif";
 import sadSnail from "../assets/character_art/sad_snail_large.gif";
@@ -33,6 +34,7 @@ export function SnailDanceScreen({ onNavigate }: SnailDanceScreenProps) {
   const [themeKey, setThemeKey] = useState<"daytime" | "sunset">("daytime");
   const { masterVolume, musicEnabled } = useSettings();
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const [showWelcome, setShowWelcome] = useState<boolean>(true);
 
   // Theme colors and music come from the chosen theme
   const themeConfig = useMemo(() => getTheme(themeKey), [themeKey]);
@@ -53,7 +55,16 @@ export function SnailDanceScreen({ onNavigate }: SnailDanceScreenProps) {
   const lastMouseRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const trayRef = useRef<HTMLDivElement | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const resizeStartRef = useRef<{ id: string; startX: number; startY: number; startW: number; startH: number } | null>(null);
+  const resizeStartRef = useRef<{
+    id: string;
+    startX: number;
+    startY: number;
+    startW: number;
+    startH: number;
+    startLeft: number;
+    startTop: number;
+    corner: 'nw' | 'ne' | 'se' | 'sw';
+  } | null>(null);
   // Incrementing z-order index: earlier items are behind later items
   const spawnIndexRef = useRef<number>(0);
   const defaultSnailIdRef = useRef<string | null>(null);
@@ -297,7 +308,7 @@ export function SnailDanceScreen({ onNavigate }: SnailDanceScreenProps) {
     setDraggingId(null);
   }
 
-  function beginResize(e: React.MouseEvent, id: string) {
+  function beginResize(e: React.MouseEvent, id: string, corner: 'nw' | 'ne' | 'se' | 'sw') {
     e.stopPropagation();
     const item = placedItems.find((p) => p.id === id);
     if (!item) return;
@@ -306,17 +317,44 @@ export function SnailDanceScreen({ onNavigate }: SnailDanceScreenProps) {
     const startH = item.height ?? 0;
     // If dimensions unknown yet, skip until onLoad sets them
     if (!startW || !startH) return;
-    resizeStartRef.current = { id, startX: e.clientX, startY: e.clientY, startW, startH };
+    resizeStartRef.current = {
+      id,
+      startX: e.clientX,
+      startY: e.clientY,
+      startW,
+      startH,
+      startLeft: item.x,
+      startTop: item.y,
+      corner,
+    };
   }
 
   function handleResizeMove(e: React.MouseEvent) {
     if (!resizeStartRef.current) return;
-    const { id, startX, startW, startH } = resizeStartRef.current;
+    const { id, startX, startW, startH, startLeft, startTop, corner } = resizeStartRef.current;
     const dx = e.clientX - startX;
-    const newW = Math.max(24, Math.min(2048, startW + dx));
+
     const ratio = startH / startW;
+    let newW = startW;
+    if (corner === 'se' || corner === 'ne') {
+      newW = startW + dx;
+    } else if (corner === 'sw' || corner === 'nw') {
+      newW = startW - dx;
+    }
+    newW = Math.max(24, Math.min(2048, Math.round(newW)));
     const newH = Math.round(newW * ratio);
-    setPlacedItems((prev) => prev.map((p) => p.id === id ? { ...p, width: newW, height: newH } : p));
+
+    let newX = startLeft;
+    let newY = startTop;
+    // Adjust position to keep the opposite corner fixed
+    if (corner === 'sw' || corner === 'nw') {
+      newX = startLeft + (startW - newW);
+    }
+    if (corner === 'nw' || corner === 'ne') {
+      newY = startTop + (startH - newH);
+    }
+
+    setPlacedItems((prev) => prev.map((p) => p.id === id ? { ...p, x: newX, y: newY, width: newW, height: newH } : p));
   }
 
   function endResize() {
@@ -348,10 +386,15 @@ export function SnailDanceScreen({ onNavigate }: SnailDanceScreenProps) {
 
   return (
     <ScreenBorder>
+      <SnailDanceWelcomeModal
+        open={showWelcome}
+        onOpenChange={setShowWelcome}
+        onClose={() => setShowWelcome(false)}
+      />
       <div className="min-h-screen flex flex-col" style={{ background: `linear-gradient(180deg, ${themeConfig.colors.sky} 0%, ${themeConfig.colors.sky} 60%, ${themeConfig.colors.water} 100%)` }}>
         <div className="flex flex-col px-3 py-2 md:p-4 gap-2 sm:gap-0">
           <div className="flex items-center space-x-2 md:space-x-8">
-            <Header title="SNAIL DANCE" subtitle="Pick a vibe and enjoy" onBack={() => onNavigate('welcome')} />
+            <Header title="DANCY PARTY" subtitle="Decorate the dance shoreand enjoy" onBack={() => onNavigate('welcome')} />
           </div>
         </div>
 
@@ -362,6 +405,14 @@ export function SnailDanceScreen({ onNavigate }: SnailDanceScreenProps) {
             <div className="w-full flex flex-col gap-2 md:grid md:grid-cols-1 md:items-center md:gap-3 lg:gap-4">
               <div ref={trayRef} className="retro-button rounded-md md:rounded-lg whitespace-nowrap py-1 md:py-2 px-2 min-h-[44px] md:col-start-1 " style={{ transform: 'none', boxShadow: '4px 4px 0px #2c1810, inset 0 0 0 2px #f7f3e9', backdropFilter: 'blur(2px)' }}>
                 <div className="w-full flex items-center gap-2">
+                  <div
+                    onClick={() => setShowWelcome(true)}
+                    className="h-10 w-10 flex-none inline-flex items-center justify-center pixel-border bg-white/40 cursor-pointer"
+                    title="How to use"
+                    aria-label="How to use"
+                  >
+                    <Info className="w-4 h-4 text-white" strokeWidth={3} />
+                  </div>
                   <div className="flex-1 overflow-x-auto overflow-y-hidden touch-pan-x" style={{ WebkitOverflowScrolling: 'touch' }}>
                     <div className="inline-flex gap-2 items-center">
                       {mountainUrls.map((u) => (
@@ -439,11 +490,54 @@ export function SnailDanceScreen({ onNavigate }: SnailDanceScreenProps) {
                   draggable={false}
                 />
                 {selectedId === item.id && item.width && item.height && (
+                  <>
+                    {/* Thin selection box */}
+                    <div
+                      className="absolute pointer-events-none"
+                      style={{ left: 0, top: 0, width: item.width, height: item.height, boxShadow: '0 0 0 3px #ffffff' }}
+                    />
+                    {/* Corner handles */}
+                    <div
+                      className="absolute"
+                      style={{ width: 5, height: 5, left: -3, top: -3, background: '#000', cursor: 'nwse-resize' }}
+                      onMouseDown={(e) => beginResize(e, item.id, 'nw')}
+                      title="Resize"
+                      aria-label="Resize top-left"
+                    />
+                    <div
+                      className="absolute"
+                      style={{ width: 5, height: 5, right: -3, top: -3, background: '#000', cursor: 'nesw-resize' }}
+                      onMouseDown={(e) => beginResize(e, item.id, 'ne')}
+                      title="Resize"
+                      aria-label="Resize top-right"
+                    />
+                    <div
+                      className="absolute"
+                      style={{ width: 5, height: 5, left: -3, bottom: -3, background: '#000', cursor: 'nesw-resize' }}
+                      onMouseDown={(e) => beginResize(e, item.id, 'sw')}
+                      title="Resize"
+                      aria-label="Resize bottom-left"
+                    />
+                    <div
+                      className="absolute"
+                      style={{ width: 5, height: 5, right: -3, bottom: -3, background: '#000', cursor: 'nwse-resize' }}
+                      onMouseDown={(e) => beginResize(e, item.id, 'se')}
+                      title="Resize"
+                      aria-label="Resize bottom-right"
+                    />
+                  </>
+                )}
+                {selectedId === item.id && (
                   <div
-                    className="absolute bg-beach-dark-rock"
-                    style={{ width: 12, height: 12, right: -6, bottom: -6, cursor: 'nwse-resize' }}
-                    onMouseDown={(e) => beginResize(e, item.id)}
-                  />
+                    className="absolute pixel-border bg-white/90 text-beach-dark-rock flex items-center justify-center"
+                    style={{ width: 16, height: 16, right: -8, top: -28, cursor: 'pointer' }}
+                    onMouseDown={(e) => { e.stopPropagation(); }}
+                    onClick={(e) => { e.stopPropagation(); removeItemById(item.id); setSelectedId(null); }}
+                    title="Delete"
+                    aria-label="Delete"
+                  >
+                    <span className="pixel-font" style={{ fontSize: 10, lineHeight: '10px' }}>X</span>
+                  </div>
                 )}
               </div>
             ))}

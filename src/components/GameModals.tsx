@@ -14,10 +14,11 @@ interface GoalModalProps {
 	tip: string;
 	isTimed: boolean;
 	startingTime: number | null;
+	isBalanceLevel?: boolean;
 	onStart: () => void;
 }
 
-export function GoalModal({ open, onOpenChange, levelNumber, goalText, tip,isTimed, startingTime, onStart }: GoalModalProps) {
+export function GoalModal({ open, onOpenChange, levelNumber, goalText, tip,isTimed, startingTime, isBalanceLevel, onStart }: GoalModalProps) {
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent hideClose className="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%]">
@@ -31,6 +32,11 @@ export function GoalModal({ open, onOpenChange, levelNumber, goalText, tip,isTim
 				<div className="pixel-font text-sm">{goalText}</div>
 				{tip && (<br />)}
 				{tip && (<div className="pixel-font text-xs mt-3 mb-3">{tip}</div>)}
+				{isBalanceLevel && (<br />)}
+				{/* Playful warning about wobbly stacks */}
+				{isBalanceLevel && (
+					<div className="pixel-font text-xs mt-1 opacity-90">Balance matters! If your stack is wobbly, rocks may spin or scuttle away.</div>
+				)}
 				{isTimed && (
 					<div className="pixel-font text-xs mt-2">You have {startingTime ?? 0}s. The timer starts when you press START.</div>
 				)}
@@ -153,4 +159,32 @@ export function PauseModal({ open, onOpenChange, isTimed, timeLeft, onResume, on
 	);
 }
 
+
+
+interface SnailDanceWelcomeModalProps {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	onClose: () => void;
+}
+
+export function SnailDanceWelcomeModal({ open, onOpenChange, onClose }: SnailDanceWelcomeModalProps) {
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent hideClose className="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%]">
+				<DialogHeader className="flex flex-row justify-center">
+					<DialogTitle className="pixel-font">WELCOME</DialogTitle>
+				</DialogHeader>
+				<div className="flex flex-row justify-center">
+					<img src={happy_snail} alt="Snail" className="center w-16 md:w-28 pointer-events-none select-none" style={{ imageRendering: 'pixelated' }} />
+				</div>
+				<div className="pixel-font text-sm text-center">Welcome to the Snail Dance Party! Decorate the dance shore by dragging items from the tray.</div>
+				<DialogFooter className="w-full">
+					<div className="flex w-full items-center justify-end gap-2">
+						<Button className="retro-button pixel-font text-beach-foam w-28 h-12 md:w-32 md:h-14 text-xs md:text-sm" onClick={onClose}>LET'S DANCE</Button>
+					</div>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
+}
 

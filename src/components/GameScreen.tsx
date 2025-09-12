@@ -6,11 +6,10 @@ import { Header } from "./Header";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getLevelData } from "../gameplay-logic/levels";
 import RockStackingGame, { RockStackingGameHandle } from "../gameplay-logic/RockStackingGame";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "./ui/hover-card";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+// Info helper UI removed; using Goal modal trigger in tray instead
 import { useIsMobile } from "./ui/use-mobile";
 import CharacterOverlay from "./CharacterOverlay";
-import { GoalModal, WinModal, FailModal, PauseModal } from "./GameScreenModal";
+import { GoalModal, WinModal, FailModal, PauseModal } from "./GameModals";
 import { getTheme } from "../gameplay-logic/themes";
 import { useSettings } from "./SettingsContext";
 
@@ -39,6 +38,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
   const [pauseOpen, setPauseOpen] = useState(false);
   const [showWave, setShowWave] = useState(false);
   const [horizonPageY, setHorizonPageY] = useState<number | null>(null);
+  const [unstableHint, setUnstableHint] = useState<{ shownAt: number } | null>(null);
   // retained for mobile height challenge marker; not used for overlay positioning
   const [snailHeightPx] = useState<number>(0);
   const [snailClimb, setSnailClimb] = useState(false);
@@ -57,6 +57,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
   const failAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const isTimed = levelData.challenge?.type === 'timed' || levelData.challenge?.type === 'timed-height' || levelData.challenge?.type === 'timed_height';
+  const isBalanceLevel = levelData.challenge?.type === 'balance';
   const initialTrayTotal = useMemo(() => levelData.types.reduce((acc, t) => acc + (t.count || 0), 0), [levelData.types]);
   const startingTime = useMemo(() => {
     if (isTimed) return levelData.challenge?.timeLimit ?? 0;
@@ -271,31 +272,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
         </div>
 
         <div className="flex flex-row justify-between items-center">
-          <div className="p-2">
-            {isMobile ? (
-              <Popover>
-                <PopoverTrigger className="inline-flex items-center text-beach-dark-rock ml-4 w-full ">
-                  <Info className="w-8 h-4" aria-label="Rotation info" />
-                </PopoverTrigger>
-                <PopoverContent align="start" className="w-[200px]">
-                  <div className="pixel-font text-xs text-beach-dark-rock">
-                    Drag rocks to build a stack. While dragging, tap with a second finger to rotate.
-                  </div>
-                </PopoverContent>
-              </Popover>
-            ) : (
-              <HoverCard>
-                <HoverCardTrigger className="inline-flex items-center text-beach-dark-rock ml-4">
-                  <Info className="w-8 h-4" aria-label="Rotation info" />
-                </HoverCardTrigger>
-                <HoverCardContent align="start" className="w-fit">
-                  <div className="pixel-font text-xs text-beach-dark-rock text-wrap">
-                    Drag and drops rocks in a stack below. Press SPACEBAR to rotate.
-                  </div>
-                </HoverCardContent>
-              </HoverCard>
-            )}
-          </div>
+          <div className="p-2" />
           {/* Game Stats */}
           <div className="w-full flex flex-row justify-end items-center space-x-2 p-2">
             {/* Score hidden for now */}
@@ -336,8 +313,29 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
               onStackTopChange={(x, y) => setStackTopPage({ x, y })}
               onStackRightBaseChange={(x, y) => setStackRightBasePage({ x, y })}
               islands={themeConfig.islands}
+              onUnstable={() => {
+                const now = Date.now();
+                // Throttle to once per 2.5s
+                if (unstableHint && now - unstableHint.shownAt < 2500) return;
+                setUnstableHint({ shownAt: now });
+                // Auto-hide after 2s
+                window.setTimeout(() => setUnstableHint((prev) => (prev && now === prev.shownAt ? null : prev)), 2000);
+              }}
               
             />
+            {unstableHint && (
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 select-none pointer-events-none">
+                <div className="retro-button pixel-font text-beach-dark-rock px-3 py-2 text-xs md:text-sm animate-pulse" style={{ backgroundColor: 'rgba(255,255,255,0.9)' }}>
+                  Wobbly stack! Rocks may spin or scuttle if unbalanced.
+                </div>
+              </div>
+            )}
+            {/* Tray-right info button to open goal modal */}
+            <div className="absolute top-2 right-2 z-20">
+              <Button onClick={() => { setPaused(true); setGoalOpen(true); }} className="retro-button pixel-font text-beach-dark-rock w-10 h-10 md:w-12 md:h-12 p-2 text-xs" title="Level info" aria-label="Level info">
+                <Info className="w-3 h-3 md:w-4 md:h-4" strokeWidth={3} />
+              </Button>
+            </div>
             {isMobile && (levelData.challenge?.type === 'height' || levelData.challenge?.type === 'timed-height' || levelData.challenge?.type === 'timed_height') && (
               <div
                 className="pointer-events-none select-none"
@@ -373,6 +371,7 @@ export function GameScreen({ onNavigate, onStartLevel, levelNumber = 1 }: GameSc
           tip={levelData.tip ?? ""}
           isTimed={isTimed}
           startingTime={startingTime}
+          isBalanceLevel={isBalanceLevel}
           onStart={() => { setGoalOpen(false); setPaused(false); setHasInteracted(false); setTimeLeft(startingTime); }}
         />
 

@@ -15,12 +15,12 @@ export function HowToPlayScreen({ onNavigate }: HowToPlayScreenProps) {
     {
       icon: Target,
       title: "STACK ROCKS",
-      description: "Move and drag rocks to build towers. Make sure they're balanced - wobbly stacks might tumble into the tide."
+      description: "Move and drag rocks to build towers. Make sure they're balanced - wobbly rocks may dance around or tumble into the tide."
     },
     {    
       icon: Trophy,
       title: "COMPLETE GOALS",
-      description: "Each level has different objectives. Build high, build fast, or build both!"
+      description: "Each level has different objectives. Build high, build fast, or build both, but always keep the rocks balanced!"
     }
   ];
 

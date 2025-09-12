@@ -40,6 +40,7 @@ export interface RockStackingGameProps {
   onStackRightBaseChange?: (pageX: number, pageY: number) => void;
   onStackRightStepsChange?: (steps: { x: number; y: number }[]) => void;
   islands?: string[]; // resolved asset URLs for island images
+  onUnstable?: () => void; // fired when a previously settled rock becomes dynamic
 }
 
 export interface RockStackingGameHandle {
@@ -67,6 +68,8 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
   const dragRef = useRef<{ rock: RockInstance | null; offX: number; offY: number; secondFingerDown: boolean; primaryTouchId: number | null }>(
     { rock: null, offX: 0, offY: 0, secondFingerDown: false, primaryTouchId: null }
   );
+  // Track previous frame's settled statics to detect when any becomes dynamic (unstable)
+  const prevStaticsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     // Preload island images for drawing behind rocks
@@ -410,12 +413,25 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
         }
       }
       if (!pausedRef.current) {
+        // Take snapshot of which rocks are currently static and not being dragged
+        const prevStaticIds = new Set<string>(rocks.filter(r => r.isStatic && !r.dragging).map(r => r.id));
         const settledList = rocks.filter(r => r.isStatic && !r.dragging);
         rocks.forEach(r => {
           if (!r.dragging && !r.isStatic) {
             updatePhysics(r, settledList, ground);
           }
         });
+        // Detect any static -> dynamic transitions (including via recheckPile deep inside physics)
+        if (typeof props.onUnstable === 'function') {
+          let fired = false;
+          for (const id of prevStaticIds) {
+            const rr = rocks.find(x => x.id === id);
+            if (rr && !rr.isStatic) { fired = true; break; }
+          }
+          if (fired) { try { props.onUnstable(); } catch {} }
+        }
+        // Store for potential external use/debug
+        prevStaticsRef.current = prevStaticIds;
       }
 
       // If flush-left is active, force all rocks to become dynamic and surge left
@@ -631,6 +647,9 @@ const RockStackingGame = forwardRef<RockStackingGameHandle, RockStackingGameProp
       if (!stillStable) {
         r.isStatic = false;
         r.velocity = r.velocity || { x: 0, y: 0 };
+        if (typeof props.onUnstable === 'function') {
+          try { props.onUnstable(); } catch {}
+        }
         // Any rocks that directly rely on r should be reconsidered
         for (const up of currentSettled) {
           const sup = findDirectSupports(up, currentSettled.concat(r));
